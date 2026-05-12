@@ -158,7 +158,10 @@ function ProductModal({ product, categories, saving, onSave, onClose }: { produc
           <textarea value={form.description||''} onChange={e => set('description', e.target.value)} rows={3}
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem', outline:'none', resize:'vertical', boxSizing:'border-box' }}/>
         </div>
-        {form.image && <img src={form.image} alt="" style={{ width:'100%', height:100, objectFit:'cover', borderRadius:8, marginTop:10 }}/>}
+        {form.image && <img src={form.image} alt="" onError={e => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = 'https://loremflickr.com/900/900/home,textile?lock=12002';
+        }} style={{ width:'100%', height:100, objectFit:'cover', borderRadius:8, marginTop:10 }}/>}
         <button disabled={saving} onClick={() => onSave({...form, id:product?.id||Date.now(), subCategory: form.subCategory || selectedCat?.subCategories[0] || 'Разное', images:[form.image||'']} as Product)}
           style={{ marginTop:18, width:'100%', background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontWeight:700, fontSize:'0.95rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
           <Save size={17}/> {saving ? 'Сохраняем...' : 'Сохранить'}
@@ -250,7 +253,7 @@ export default function Admin() {
       id: Date.now(),
       name: newCatName.trim(),
       slug,
-      image: 'https://images.unsplash.com/photo-1775662039200-44ec3a6c5061?auto=format&fit=crop&w=600&q=80',
+      image: 'https://loremflickr.com/900/900/home,textile?lock=12001',
       subCategories: [],
     };
     const saved = await adminRequest<Category[]>('categories', {
@@ -480,7 +483,10 @@ export default function Admin() {
                 <tbody>
                   {products.map(p => (
                     <tr key={p.id} style={{ borderTop:'1px solid #f0f0f0' }}>
-                      <td style={{ padding:'9px 14px' }}><img src={p.image} alt="" style={{ width:42, height:42, borderRadius:6, objectFit:'cover' }}/></td>
+                      <td style={{ padding:'9px 14px' }}><img src={p.image} alt="" onError={e => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${p.id + 90000}`;
+                      }} style={{ width:42, height:42, borderRadius:6, objectFit:'cover' }}/></td>
                       <td style={{ padding:'9px 14px', fontWeight:600, fontSize:'0.85rem', maxWidth:200 }}>{p.title}</td>
                       <td style={{ padding:'9px 14px', fontSize:'0.8rem', color:'#666' }}>{p.category}</td>
                       <td style={{ padding:'9px 14px', fontWeight:700, color:'#e53935' }}>{p.price.toLocaleString()} ₸</td>
@@ -521,7 +527,10 @@ export default function Admin() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
               {categories.map(cat => (
                 <div key={cat.id} style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
-                  <img src={cat.image} alt={cat.name} style={{ width:'100%', height:90, objectFit:'cover' }}/>
+                  <img src={cat.image} alt={cat.name} onError={e => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${cat.id + 80000}`;
+                  }} style={{ width:'100%', height:90, objectFit:'cover' }}/>
                   <div style={{ padding:'11px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span style={{ fontWeight:700, fontSize:'0.9rem', color:'#1a1a2e' }}>{cat.name}</span>
                     <button onClick={async () => {

@@ -47,17 +47,17 @@ export interface User {
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: 1, name: 'Постельное белье', slug: 'bedding', image: 'https://images.unsplash.com/photo-1606855637183-ea2a00b6f15f?auto=format&fit=crop&w=600&q=80', subCategories: ['Сатин', 'Страйп-Сатин', 'Поплин', 'Бязь', 'Ранфорс', 'Фланель'] },
-  { id: 2, name: 'Подушки', slug: 'pillows', image: 'https://images.unsplash.com/photo-1595191830227-a008b640e215?auto=format&fit=crop&w=400&q=80', subCategories: ['Анатомические', 'Декоративные', 'Детские', 'Ортопедические'] },
-  { id: 3, name: 'Одеяла', slug: 'blankets', image: 'https://images.unsplash.com/photo-1612152505858-6c8f94d935f0?auto=format&fit=crop&w=400&q=80', subCategories: ['Бамбук', 'Шерсть', 'Хлопок', 'Всесезонные', 'Летние'] },
-  { id: 4, name: 'Простыни', slug: 'sheets', image: 'https://images.unsplash.com/photo-1629949009765-40f74d96f285?auto=format&fit=crop&w=400&q=80', subCategories: ['На резинке', 'Классические', 'Наматрасники'] },
-  { id: 5, name: 'Покрывала', slug: 'bedspreads', image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=400&q=80', subCategories: ['Жаккард', 'Хлопок', 'Пледы', 'Велюр'] },
-  { id: 6, name: 'Полотенца', slug: 'towels', image: 'https://images.unsplash.com/photo-1653762238785-a3d9f435603a?auto=format&fit=crop&w=600&q=80', subCategories: ['Банные', 'Лицевые', 'Наборы', 'Коврики'] },
-  { id: 7, name: 'Халаты', slug: 'robes', image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=400&q=80', subCategories: ['Махровые', 'Вафельные', 'Детские', 'Кимоно'] },
-  { id: 8, name: 'Текстиль для кухни', slug: 'kitchen', image: 'https://images.unsplash.com/photo-1740760188069-ad88835726c5?auto=format&fit=crop&w=600&q=80', subCategories: ['Скатерти', 'Салфетки', 'Полотенца кухонные', 'Прихватки'] },
-  { id: 9, name: 'Детский текстиль', slug: 'children', image: 'https://images.unsplash.com/photo-1586015555751-63bb77f4322a?auto=format&fit=crop&w=400&q=80', subCategories: ['Пижамы', 'Одеяла', 'Постельное', 'Полотенца'] },
-  { id: 10, name: 'Тапочки', slug: 'slippers', image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=400&q=80', subCategories: ['Закрытые', 'Открытые', 'Детские'] },
-  { id: 11, name: 'Шторы и ткани', slug: 'curtains', image: 'https://images.unsplash.com/photo-1775662039200-44ec3a6c5061?auto=format&fit=crop&w=600&q=80', subCategories: ['Портьеры', 'Тюль', 'Ткани метражом', 'Пошив на заказ'] },
+  { id: 1, name: 'Постельное белье', slug: 'bedding', image: 'https://loremflickr.com/900/900/bedding,bedroom?lock=1001', subCategories: ['Сатин', 'Страйп-Сатин', 'Поплин', 'Бязь', 'Ранфорс', 'Фланель'] },
+  { id: 2, name: 'Подушки', slug: 'pillows', image: 'https://loremflickr.com/900/900/pillow,bedroom?lock=2001', subCategories: ['Анатомические', 'Декоративные', 'Детские', 'Ортопедические'] },
+  { id: 3, name: 'Одеяла', slug: 'blankets', image: 'https://loremflickr.com/900/900/blanket,bed?lock=3001', subCategories: ['Бамбук', 'Шерсть', 'Хлопок', 'Всесезонные', 'Летние'] },
+  { id: 4, name: 'Простыни', slug: 'sheets', image: 'https://loremflickr.com/900/900/bed,sheets?lock=4001', subCategories: ['На резинке', 'Классические', 'Наматрасники'] },
+  { id: 5, name: 'Покрывала', slug: 'bedspreads', image: 'https://loremflickr.com/900/900/bedspread,quilt?lock=5001', subCategories: ['Жаккард', 'Хлопок', 'Пледы', 'Велюр'] },
+  { id: 6, name: 'Полотенца', slug: 'towels', image: 'https://loremflickr.com/900/900/towels,bathroom?lock=6001', subCategories: ['Банные', 'Лицевые', 'Наборы', 'Коврики'] },
+  { id: 7, name: 'Халаты', slug: 'robes', image: 'https://loremflickr.com/900/900/bathrobe,spa?lock=7001', subCategories: ['Махровые', 'Вафельные', 'Детские', 'Кимоно'] },
+  { id: 8, name: 'Текстиль для кухни', slug: 'kitchen', image: 'https://loremflickr.com/900/900/kitchen,towels?lock=8001', subCategories: ['Скатерти', 'Салфетки', 'Полотенца кухонные', 'Прихватки'] },
+  { id: 9, name: 'Детский текстиль', slug: 'children', image: 'https://loremflickr.com/900/900/children,bedding?lock=9001', subCategories: ['Пижамы', 'Одеяла', 'Постельное', 'Полотенца'] },
+  { id: 10, name: 'Тапочки', slug: 'slippers', image: 'https://loremflickr.com/900/900/slippers,home?lock=10001', subCategories: ['Закрытые', 'Открытые', 'Детские'] },
+  { id: 11, name: 'Шторы и ткани', slug: 'curtains', image: 'https://loremflickr.com/900/900/curtains,interior?lock=11001', subCategories: ['Портьеры', 'Тюль', 'Ткани метражом', 'Пошив на заказ'] },
 ];
 
 export function getProducts(): Product[] {

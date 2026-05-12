@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { ShoppingCart, Heart, Search, User } from 'lucide-react';
 import { useCart } from '../cartStore';
+import { useFavorites } from '../data/favoritesContext';
 import { useShopData } from '../data/shopDataStore';
 import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const { items } = useCart();
+  const { favoriteIds } = useFavorites();
   const { categories } = useShopData();
   const [q, setQ] = useState('');
   const navigate = useNavigate();
@@ -46,10 +48,9 @@ export default function Header() {
           </div>
 
           {/* Phone */}
-          <div style={{ flexShrink: 0, textAlign: 'right' }}>
-            <div style={{ fontSize: '0.62rem', color: '#999' }}>Звонок бесплатный</div>
-            <a href="tel:+77023797233" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>+7 702 379 72 33</a>
-          </div>
+          <a href="https://wa.me/77023797233" target="_blank" rel="noreferrer" style={{ flexShrink: 0, textAlign: 'right', fontWeight: 800, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>
+            +7 702 379 72 33
+          </a>
 
           {/* Icons */}
           <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexShrink: 0 }}>
@@ -57,9 +58,14 @@ export default function Header() {
             <a href="/profile" style={{ color: '#1a1a2e', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.58rem', gap: 2, textDecoration: 'none' }}>
               <User size={22} />Профиль
             </a>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a1a2e', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.58rem', gap: 2 }}>
+            <a href="/favorites" style={{ position: 'relative', color: '#1a1a2e', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.58rem', gap: 2, textDecoration: 'none' }}>
               <Heart size={22} />Избранное
-            </button>
+              {favoriteIds.length > 0 && (
+                <span style={{ position: 'absolute', top: -6, right: -8, background: '#e53935', color: '#fff', borderRadius: '50%', width: 17, height: 17, fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                  {favoriteIds.length}
+                </span>
+              )}
+            </a>
             <a href="/cart" style={{ position: 'relative', color: '#1a1a2e', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.58rem', gap: 2, textDecoration: 'none' }}>
               <ShoppingCart size={22} />Корзина
               {items.length > 0 && (

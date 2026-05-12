@@ -115,17 +115,17 @@ export function runSeed() {
 
   // Seed some Orders
   const MOCK_ORDERS: Order[] = [
-    { id: 'ORD-001', userId: 'u1', userName: 'Айгерим Касымова', items: [{ title: 'Постельное белье Страйп-Сатин', qty: 1, price: 29900 }], total: 29900, status: 'delivered', date: '2026-05-08', address: 'Алматы, ул. Абая 12' },
+    { id: 'ORD-001', userId: 'u1', userName: 'Аружан Садыкова', items: [{ title: 'Постельное белье Страйп-Сатин', qty: 1, price: 29900 }], total: 29900, status: 'delivered', date: '2026-05-08', address: 'Астана, район Есиль' },
     { id: 'ORD-002', userId: 'u2', userName: 'Нурлан Бекова', items: [{ title: 'Подушка Memory Foam', qty: 2, price: 15000 }], total: 30000, status: 'shipping', date: '2026-05-09', address: 'Астана, пр. Республики 45' },
     { id: 'ORD-003', userId: 'u3', userName: 'Дина Сейткали', items: [{ title: 'Одеяло Бамбук', qty: 1, price: 22000 }, { title: 'Полотенце 50x100', qty: 3, price: 3500 }], total: 32500, status: 'pending', date: '2026-05-10', address: 'Шымкент, ул. Желтоқсан 7' },
-    { id: 'ORD-004', userId: 'u1', userName: 'Айгерим Касымова', items: [{ title: 'Халат махровый', qty: 1, price: 18000 }], total: 18000, status: 'confirmed', date: '2026-05-10', address: 'Алматы, ул. Абая 12' },
+    { id: 'ORD-004', userId: 'u1', userName: 'Аружан Садыкова', items: [{ title: 'Халат махровый', qty: 1, price: 18000 }], total: 18000, status: 'confirmed', date: '2026-05-10', address: 'Астана, район Есиль' },
     { id: 'ORD-005', userId: 'u4', userName: 'Ерлан Жаксыбеков', items: [{ title: 'Набор полотенец SPA', qty: 1, price: 12000 }], total: 12000, status: 'cancelled', date: '2026-05-07', address: 'Павлодар, ул. Ленина 3' },
     { id: 'ORD-006', userId: 'u5', userName: 'Сания Омарова', items: [{ title: 'Покрывало Жаккард', qty: 1, price: 25000 }], total: 25000, status: 'shipping', date: '2026-05-09', address: 'Алматы, ул. Достык 180' },
   ];
   saveOrders(MOCK_ORDERS);
 
   const MOCK_USERS: User[] = [
-    { id: 'u1', name: 'Айгерим Касымова', email: 'aigеrim@mail.kz', phone: '+7 707 123-45-67', registeredAt: '2026-03-15', cartItems: 2, totalOrders: 8, totalSpent: 187000 },
+    { id: 'u1', name: 'Аружан Садыкова', email: 'aruzhan@example.kz', phone: '+7 701 111-22-33', registeredAt: '2026-03-15', cartItems: 2, totalOrders: 8, totalSpent: 187000 },
     { id: 'u2', name: 'Нурлан Бекова', email: 'nurlan@gmail.com', phone: '+7 778 234-56-78', registeredAt: '2026-04-02', cartItems: 0, totalOrders: 3, totalSpent: 75000 },
     { id: 'u3', name: 'Дина Сейткали', email: 'dina@yandex.kz', phone: '+7 701 345-67-89', registeredAt: '2026-04-20', cartItems: 5, totalOrders: 1, totalSpent: 32500 },
     { id: 'u4', name: 'Ерлан Жаксыбеков', email: 'erlan@mail.ru', phone: '+7 747 456-78-90', registeredAt: '2026-02-10', cartItems: 1, totalOrders: 5, totalSpent: 95000 },

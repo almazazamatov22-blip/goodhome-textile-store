@@ -1,4 +1,14 @@
 import { Instagram, Phone, Mail, MapPin, Youtube } from 'lucide-react';
+import { INFO_LINKS } from '../data/infoLinks';
+
+const CATALOG_LINKS = [
+  { title: 'Постельное белье', href: '/catalog/bedding' },
+  { title: 'Подушки', href: '/catalog/pillows' },
+  { title: 'Одеяла', href: '/catalog/blankets' },
+  { title: 'Простыни', href: '/catalog/sheets' },
+  { title: 'Покрывала', href: '/catalog/bedspreads' },
+  { title: 'Полотенца', href: '/catalog/towels' },
+];
 
 export default function Footer() {
   return (
@@ -23,31 +33,31 @@ export default function Footer() {
         </div>
 
         {[
-          { title: 'Каталог', links: ['Постельное белье', 'Подушки', 'Одеяла', 'Простыни', 'Покрывала', 'Полотенца'] },
-          { title: 'Информация', links: ['О нас', 'Доставка и оплата', 'Обмен и возврат', 'Гарантия качества', 'Контакты'] },
+          { title: 'Каталог', links: CATALOG_LINKS },
+          { title: 'Информация', links: INFO_LINKS.map(link => ({ title: link.title, href: link.path })) },
         ].map(col => (
           <div key={col.title}>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: 1 }}>{col.title}</div>
             {col.links.map(l => (
-              <a key={l} href="#" style={{ display: 'block', color: '#888', textDecoration: 'none', fontSize: '0.85rem', marginBottom: 8, transition: 'color 0.2s' }}
+              <a key={l.title} href={l.href} style={{ display: 'block', color: '#888', textDecoration: 'none', fontSize: '0.85rem', marginBottom: 8, transition: 'color 0.2s' }}
                 onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
                 onMouseLeave={e => (e.currentTarget.style.color = '#888')}
-              >{l}</a>
+              >{l.title}</a>
             ))}
           </div>
         ))}
 
         <div>
           <div style={{ fontWeight: 700, marginBottom: 16, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: 1 }}>Контакты</div>
-          {[
-            { icon: <Phone size={14}/>, text: '+7 702 379 72 33' },
-            { icon: <Mail size={14}/>, text: 'info@goodhome.kz' },
-            { icon: <MapPin size={14}/>, text: 'г. Астана, Казахстан' },
-          ].map((c, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10 }}>
-              <span style={{ color: '#e53935' }}>{c.icon}</span>{c.text}
-            </div>
-          ))}
+          <a href="https://wa.me/77023797233" target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ color: '#e53935' }}><Phone size={14}/></span>+7 702 379 72 33
+          </a>
+          <a href="mailto:info@goodhome.kz" style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ color: '#e53935' }}><Mail size={14}/></span>info@goodhome.kz
+          </a>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10 }}>
+            <span style={{ color: '#e53935' }}><MapPin size={14}/></span>г. Астана, Казахстан
+          </div>
           <div style={{ marginTop: 12, fontSize: '0.75rem', color: '#666' }}>ПН-ВС: 10:00 – 20:00</div>
         </div>
       </div>

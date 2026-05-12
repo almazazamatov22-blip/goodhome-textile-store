@@ -1,9 +1,27 @@
 import { ShoppingCart, Star, Heart } from 'lucide-react';
 import { type Product } from '../data/products';
 import { useCart } from '../cartStore';
+import { useFavorites } from '../data/favoritesContext';
+
+function fallbackKeywords(product: Product) {
+  const text = `${product.category} ${product.subCategory} ${product.title}`.toLowerCase();
+  if (text.includes('подуш')) return 'pillow,bedroom';
+  if (text.includes('одеял')) return 'blanket,bed';
+  if (text.includes('простын')) return 'bed,sheets';
+  if (text.includes('покрывал') || text.includes('плед')) return 'bedspread,quilt';
+  if (text.includes('полотен')) return 'towels,bathroom';
+  if (text.includes('халат')) return 'bathrobe,spa';
+  if (text.includes('кух')) return 'kitchen,towels';
+  if (text.includes('дет')) return 'children,bedding';
+  if (text.includes('тапоч')) return 'slippers,home';
+  if (text.includes('штор') || text.includes('ткан')) return 'curtains,interior';
+  return 'bedding,bedroom';
+}
 
 export default function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorite = isFavorite(product.id);
 
   return (
     <div style={{
@@ -26,13 +44,25 @@ export default function ProductCard({ product }: { product: Product }) {
       )}
 
       {/* Wishlist */}
-      <button style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-        <Heart size={16} color="#999" />
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFavorite(product.id);
+        }}
+        title={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+        aria-label={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+        style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, background: 'rgba(255,255,255,0.95)', border: favorite ? '1px solid #ffcdd2' : 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+      >
+        <Heart size={16} color={favorite ? '#e53935' : '#999'} fill={favorite ? '#e53935' : 'none'} />
       </button>
 
       {/* Image */}
       <div style={{ height: 200, overflow: 'hidden', background: '#f9f9f9' }}>
         <img src={product.image} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
+          onError={e => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = `https://loremflickr.com/900/900/${fallbackKeywords(product)}?lock=${product.id + 90000}`;
+          }}
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
           onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         />

@@ -4,6 +4,7 @@ import { User, Eye, EyeOff } from 'lucide-react';
 export default function Profile() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showPass, setShowPass] = useState(false);
+  const [acceptedPersonalData, setAcceptedPersonalData] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
 
   return (
@@ -32,7 +33,7 @@ export default function Profile() {
           {mode === 'register' && (
             <div>
               <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#555', display: 'block', marginBottom: 5 }}>Имя и фамилия</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Айгерим Касымова"
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Имя Фамилия"
                 style={{ width: '100%', border: '1.5px solid #e5e5e5', borderRadius: 8, padding: '10px 14px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
             </div>
           )}
@@ -62,9 +63,16 @@ export default function Profile() {
             </div>
           </div>
 
-          <button style={{ background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: 8, transition: 'background 0.2s' }}
+          {mode === 'register' && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.78rem', lineHeight: 1.45, color: '#666', cursor: 'pointer' }}>
+              <input type="checkbox" checked={acceptedPersonalData} onChange={e => setAcceptedPersonalData(e.target.checked)} style={{ marginTop: 2, accentColor: '#e53935' }} />
+              <span>Согласен(на) на обработку персональных данных для регистрации, обработки заказа и связи с магазином.</span>
+            </label>
+          )}
+
+          <button disabled={mode === 'register' && !acceptedPersonalData} style={{ background: mode === 'register' && !acceptedPersonalData ? '#f0a3a1' : '#e53935', color: '#fff', border: 'none', borderRadius: 8, padding: '12px', fontWeight: 700, fontSize: '1rem', cursor: mode === 'register' && !acceptedPersonalData ? 'not-allowed' : 'pointer', marginTop: 8, transition: 'background 0.2s' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#c62828')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#e53935')}>
+            onMouseLeave={e => (e.currentTarget.style.background = mode === 'register' && !acceptedPersonalData ? '#f0a3a1' : '#e53935')}>
             {mode === 'login' ? 'Войти' : 'Создать аккаунт'}
           </button>
 

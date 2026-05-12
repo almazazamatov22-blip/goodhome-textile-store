@@ -7,9 +7,15 @@ export default function Cart() {
   const { items, remove, clear, total } = useCart();
   const { createOrder } = useShopData();
   const [form, setForm] = useState({ name: '', phone: '', address: 'Астана, ' });
+  const [acceptedPersonalData, setAcceptedPersonalData] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const submitOrder = async () => {
+    if (!acceptedPersonalData) {
+      alert('Подтвердите согласие на обработку персональных данных');
+      return;
+    }
+
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
       alert('Заполните имя, телефон и адрес доставки');
       return;
@@ -48,7 +54,10 @@ export default function Cart() {
         <h1 style={{ fontWeight: 800, color: '#1a1a2e', marginBottom: 24 }}>Корзина ({items.length})</h1>
         {items.map(item => (
           <div key={item.id} style={{ background: '#fff', borderRadius: 12, padding: 20, display: 'flex', gap: 16, marginBottom: 12, border: '1px solid #f0f0f0' }}>
-            <img src={item.image} alt={item.title} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
+            <img src={item.image} alt={item.title} onError={e => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${item.id + 90000}`;
+            }} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
               <div style={{ color: '#e53935', fontWeight: 800, fontSize: '1.1rem' }}>{item.price.toLocaleString()} ₸</div>
@@ -71,7 +80,11 @@ export default function Cart() {
             <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Адрес доставки"
               style={{ border:'1px solid #ddd', borderRadius:8, padding:'10px 12px', fontSize:'0.9rem', outline:'none' }} />
           </div>
-          <button disabled={saving} onClick={() => void submitOrder()} style={{ width: '100%', background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginBottom: 10 }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.78rem', color: '#666', lineHeight: 1.45, marginBottom: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={acceptedPersonalData} onChange={e => setAcceptedPersonalData(e.target.checked)} style={{ marginTop: 2, accentColor: '#e53935' }} />
+            <span>Согласен(на) на обработку персональных данных для оформления заказа, доставки и связи с магазином.</span>
+          </label>
+          <button disabled={saving || !acceptedPersonalData} onClick={() => void submitOrder()} style={{ width: '100%', background: saving || !acceptedPersonalData ? '#f0a3a1' : '#e53935', color: '#fff', border: 'none', borderRadius: 8, padding: '14px', fontWeight: 700, fontSize: '1rem', cursor: saving || !acceptedPersonalData ? 'not-allowed' : 'pointer', marginBottom: 10 }}>
             {saving ? 'Создаем заказ...' : 'Оформить заказ'}
           </button>
           <button onClick={clear} style={{ width: '100%', background: '#f4f4f4', color: '#666', border: 'none', borderRadius: 8, padding: '10px', fontWeight: 600, cursor: 'pointer' }}>Очистить корзину</button>

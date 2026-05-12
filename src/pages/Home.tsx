@@ -7,7 +7,7 @@ import { useShopData } from '../data/shopDataStore';
 const BENEFITS = [
   { icon: <Truck size={28} color="#e53935" />, title: 'Бесплатная доставка', sub: 'При заказе от 20 000 ₸' },
   { icon: <Shield size={28} color="#e53935" />, title: 'Гарантия качества', sub: 'Сертифицированная продукция' },
-  { icon: <RotateCcw size={28} color="#e53935" />, title: 'Легкий возврат', sub: 'В течение 30 дней' },
+  { icon: <RotateCcw size={28} color="#e53935" />, title: 'Обмен и возврат', sub: '14 дней по закону РК' },
   { icon: <CreditCard size={28} color="#e53935" />, title: 'Рассрочка 0%', sub: 'До 12 месяцев без переплат' },
 ];
 
@@ -48,6 +48,10 @@ export default function Home() {
           <a key={cat.id} href={`/catalog/${cat.slug}`} style={{ textDecoration: 'none', textAlign: 'center' }}>
             <div style={{ borderRadius: 12, overflow: 'hidden', height: 110, marginBottom: 8, position: 'relative' }}>
               <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
+                onError={e => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${cat.id + 80000}`;
+                }}
                 onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
               />
