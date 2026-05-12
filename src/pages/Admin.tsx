@@ -1,7 +1,35 @@
-import { useState, type ReactNode } from 'react';
-import { getProducts, saveProducts, getCategories, saveCategories, getOrders, getUsers, type Product, type Category } from '../data/products';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { type Product, type Category } from '../data/products';
 import { CATEGORY_FILTERS } from '../data/filters';
 import { BarChart2, ShoppingBag, Tag, LogOut, Users, ShoppingCart, Package, Plus, Pencil, Trash2, X, Save, TrendingUp, Clock, CheckCircle, Truck, XCircle } from 'lucide-react';
+
+interface AdminData {
+  products: Product[];
+  categories: Category[];
+  orders: {
+    id: string;
+    userId: string | null;
+    userName: string;
+    items: { title: string; qty: number; price: number }[];
+    total: number;
+    status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
+    date: string;
+    address: string;
+  }[];
+  users: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    registeredAt: string;
+    cartItems: number;
+    totalOrders: number;
+    totalSpent: number;
+  }[];
+}
+
+const ADMIN_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin`;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 const NAV = [
   { id: 'dashboard', label: 'Дашборд', icon: <BarChart2 size={18}/> },
@@ -32,8 +60,7 @@ function StatCard({ label, value, color, icon, sub }: { label: string; value: st
   );
 }
 
-function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|null; onSave:(p:Product)=>void; onClose:()=>void }) {
-  const cats = getCategories();
+function ProductModal({ product, categories, saving, onSave, onClose }: { product: Partial<Product>|null; categories: Category[]; saving: boolean; onSave:(p:Product)=>Promise<void>; onClose:()=>void }) {
   const [form, setForm] = useState<Partial<Product>>(product || { title:'', category:'', subCategory:'', price:0, image:'', description:'', rating:5, reviews:0, stock:0, attributes: {} });
   
   const set = (k: keyof Product, v: Product[keyof Product] | undefined) => setForm(f => ({...f, [k]: v}));
@@ -42,7 +69,7 @@ function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|
     setForm(f => ({ ...f, attributes: { ...(f.attributes || {}), [key]: val } }));
   };
 
-  const selectedCat = cats.find(c => c.name === form.category);
+  const selectedCat = categories.find(c => c.name === form.category);
   const activeFilters = selectedCat ? CATEGORY_FILTERS[selectedCat.slug] || [] : [];
 
   return (
@@ -63,7 +90,7 @@ function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|
               <label style={{ fontSize:'0.78rem', fontWeight:600, color:'#555', display:'block', marginBottom:4 }}>Категория</label>
               <select value={form.category||''} onChange={e => set('category', e.target.value)} style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem' }}>
                 <option value="">Выберите...</option>
-                {cats.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div style={{ flex: 1 }}>
@@ -75,6 +102,13 @@ function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|
                 <option value="sale">Скидка</option>
               </select>
             </div>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ fontSize:'0.78rem', fontWeight:600, color:'#555', display:'block', marginBottom:4 }}>Подкатегория</label>
+            <select value={form.subCategory||''} onChange={e => set('subCategory', e.target.value)} style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem' }}>
+              <option value="">Выберите...</option>
+              {selectedCat?.subCategories.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+            </select>
           </div>
         </div>
 
@@ -125,9 +159,9 @@ function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem', outline:'none', resize:'vertical', boxSizing:'border-box' }}/>
         </div>
         {form.image && <img src={form.image} alt="" style={{ width:'100%', height:100, objectFit:'cover', borderRadius:8, marginTop:10 }}/>}
-        <button onClick={() => onSave({...form, id:product?.id||Date.now(), images:[form.image||'']} as Product)}
+        <button disabled={saving} onClick={() => onSave({...form, id:product?.id||Date.now(), subCategory: form.subCategory || selectedCat?.subCategories[0] || 'Разное', images:[form.image||'']} as Product)}
           style={{ marginTop:18, width:'100%', background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontWeight:700, fontSize:'0.95rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-          <Save size={17}/> Сохранить
+          <Save size={17}/> {saving ? 'Сохраняем...' : 'Сохранить'}
         </button>
       </div>
     </div>
@@ -136,16 +170,96 @@ function ProductModal({ product, onSave, onClose }: { product: Partial<Product>|
 
 export default function Admin() {
   const [page, setPage] = useState('dashboard');
-  const [products, setProducts] = useState<Product[]>(getProducts());
-  const [categories, setCategories] = useState<Category[]>(getCategories());
-  const orders = getOrders();
-  const users = getUsers();
+  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('goodhome_admin_key') || '');
+  const [data, setData] = useState<AdminData>({ products: [], categories: [], orders: [], users: [] });
   const [editProduct, setEditProduct] = useState<Partial<Product>|null|undefined>(undefined);
   const [newCatName, setNewCatName] = useState('');
   const [orderFilter, setOrderFilter] = useState('all');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveProds = (p: Product[]) => { setProducts(p); saveProducts(p); };
-  const saveCats  = (c: Category[]) => { setCategories(c); saveCategories(c); };
+  const { products, categories, orders, users } = data;
+
+  const adminRequest = useCallback(async <T,>(resource: string, options: RequestInit = {}) => {
+    const response = await fetch(`${ADMIN_ENDPOINT}?resource=${resource}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'x-admin-key': adminKey,
+        ...(options.headers || {}),
+      },
+    });
+
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || `Admin API error ${response.status}`);
+    }
+
+    return response.json() as Promise<T>;
+  }, [adminKey]);
+
+  const loadAdminData = useCallback(async () => {
+    if (!adminKey.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      sessionStorage.setItem('goodhome_admin_key', adminKey);
+      setData(await adminRequest<AdminData>('all'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить админ-данные');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminKey, adminRequest]);
+
+  useEffect(() => {
+    if (!adminKey) return;
+    const timer = window.setTimeout(() => {
+      void loadAdminData();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [adminKey, loadAdminData]);
+
+  const handleSaveProduct = async (product: Product) => {
+    setSaving(true);
+    try {
+      const exists = products.some(item => item.id === product.id);
+      const saved = await adminRequest<Product[]>(`products&id=${product.id}`, {
+        method: exists ? 'PATCH' : 'POST',
+        body: JSON.stringify(product),
+      });
+      setData(prev => ({
+        ...prev,
+        products: exists
+          ? prev.products.map(item => item.id === saved[0].id ? saved[0] : item)
+          : [...prev.products, saved[0]],
+      }));
+      setEditProduct(undefined);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) return;
+    const slug = newCatName.toLowerCase().trim().replace(/\s+/g, '-');
+    const category = {
+      id: Date.now(),
+      name: newCatName.trim(),
+      slug,
+      image: 'https://images.unsplash.com/photo-1775662039200-44ec3a6c5061?auto=format&fit=crop&w=600&q=80',
+      subCategories: [],
+    };
+    const saved = await adminRequest<Category[]>('categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    });
+    setData(prev => ({ ...prev, categories: [...prev.categories, saved[0]] }));
+    setNewCatName('');
+  };
 
   const totalRevenue = orders.filter(o => o.status==='delivered').reduce((s,o) => s+o.total, 0);
   const inCart = users.reduce((s,u) => s+u.cartItems, 0);
@@ -163,10 +277,28 @@ export default function Admin() {
     fontWeight: page===id ? 700 : 400, cursor:'pointer', textAlign:'left' as const, transition:'all 0.2s'
   });
 
+  if (!adminKey || (error === 'Invalid admin key' && !products.length)) {
+    return (
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f4f6fb', fontFamily:'Roboto,sans-serif', padding:20 }}>
+        <div style={{ width:380, background:'#fff', borderRadius:14, padding:28, boxShadow:'0 10px 35px rgba(0,0,0,0.1)' }}>
+          <h1 style={{ fontSize:'1.25rem', fontWeight:800, color:'#1a1a2e', marginBottom:10 }}>Админ-панель GOOD HOME</h1>
+          <p style={{ color:'#777', fontSize:'0.88rem', lineHeight:1.5, marginBottom:18 }}>Введите ключ администратора. Все действия будут выполнены через Supabase на сервере.</p>
+          <input type="password" value={adminKey} onChange={e => setAdminKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && void loadAdminData()} placeholder="ADMIN_API_KEY"
+            style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'11px 12px', fontSize:'0.95rem', outline:'none', boxSizing:'border-box', marginBottom:12 }} />
+          {error && <div style={{ color:'#c62828', fontSize:'0.82rem', marginBottom:12 }}>{error}</div>}
+          <button onClick={() => void loadAdminData()} disabled={loading || !adminKey.trim()}
+            style={{ width:'100%', background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'12px', fontWeight:700, cursor:'pointer' }}>
+            {loading ? 'Проверяем...' : 'Войти'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display:'flex', minHeight:'100vh', fontFamily:'Roboto,sans-serif', background:'#f4f6fb' }}>
       {editProduct !== undefined && (
-        <ProductModal product={editProduct} onSave={p => { saveProds(products.some(x=>x.id===p.id)?products.map(x=>x.id===p.id?p:x):[...products,p]); setEditProduct(undefined); }} onClose={() => setEditProduct(undefined)}/>
+        <ProductModal product={editProduct} categories={categories} saving={saving} onSave={handleSaveProduct} onClose={() => setEditProduct(undefined)}/>
       )}
 
       {/* Sidebar */}
@@ -189,6 +321,12 @@ export default function Admin() {
 
       {/* Main */}
       <main style={{ flex:1, padding:28, overflow:'auto' }}>
+        {(loading || error) && (
+          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, background: error ? '#fff8e1' : '#e3f2fd', border: `1px solid ${error ? '#ffe0a3' : '#bbdefb'}`, borderRadius: 10, padding: '10px 14px', color: error ? '#8a5a00' : '#1565c0', fontSize: '0.85rem' }}>
+            <span>{loading ? 'Загружаем данные из Supabase...' : `Ошибка Supabase: ${error}`}</span>
+            <button onClick={() => void loadAdminData()} style={{ border:'none', background:'transparent', color:'inherit', fontWeight:700, cursor:'pointer' }}>Обновить</button>
+          </div>
+        )}
 
         {/* DASHBOARD */}
         {page==='dashboard' && (
@@ -353,7 +491,11 @@ export default function Admin() {
                       <td style={{ padding:'9px 14px' }}>
                         <div style={{ display:'flex', gap:7 }}>
                           <button onClick={() => setEditProduct(p)} style={{ background:'#e3f2fd', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#1565c0' }}><Pencil size={13}/></button>
-                          <button onClick={() => { if(confirm('Удалить?')) saveProds(products.filter(x=>x.id!==p.id)); }} style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
+                          <button onClick={async () => {
+                            if (!confirm('Удалить?')) return;
+                            await adminRequest<Product[]>(`products&id=${p.id}`, { method: 'DELETE' });
+                            setData(prev => ({ ...prev, products: prev.products.filter(item => item.id !== p.id) }));
+                          }} style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
                         </div>
                       </td>
                     </tr>
@@ -371,7 +513,7 @@ export default function Admin() {
             <div style={{ display:'flex', gap:10, marginBottom:22 }}>
               <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Название новой категории"
                 style={{ flex:1, border:'1px solid #ddd', borderRadius:8, padding:'9px 14px', fontSize:'0.9rem', outline:'none' }}/>
-              <button onClick={() => { if(!newCatName.trim()) return; saveCats([...categories,{id:Date.now(),name:newCatName,slug:newCatName.toLowerCase().replace(/\s+/g,'-'),image:'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=400&q=80',subCategories:[]}]); setNewCatName(''); }}
+              <button onClick={() => void handleAddCategory()}
                 style={{ background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'9px 18px', fontWeight:700, cursor:'pointer', display:'flex', gap:6, alignItems:'center' }}>
                 <Plus size={16}/> Добавить
               </button>
@@ -382,7 +524,11 @@ export default function Admin() {
                   <img src={cat.image} alt={cat.name} style={{ width:'100%', height:90, objectFit:'cover' }}/>
                   <div style={{ padding:'11px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <span style={{ fontWeight:700, fontSize:'0.9rem', color:'#1a1a2e' }}>{cat.name}</span>
-                    <button onClick={() => { if(confirm('Удалить?')) saveCats(categories.filter(c=>c.id!==cat.id)); }}
+                    <button onClick={async () => {
+                      if (!confirm('Удалить?')) return;
+                      await adminRequest<Category[]>(`categories&id=${cat.id}`, { method: 'DELETE' });
+                      setData(prev => ({ ...prev, categories: prev.categories.filter(item => item.id !== cat.id) }));
+                    }}
                       style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
                   </div>
                 </div>

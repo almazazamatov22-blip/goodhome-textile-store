@@ -7,7 +7,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export async function supabaseRest<T>(
   table: string,
-  options: { method?: SupabaseMethod; query?: string; body?: unknown } = {},
+  options: { method?: SupabaseMethod; query?: string; body?: unknown; prefer?: string } = {},
 ): Promise<T> {
   if (!isSupabaseConfigured) {
     throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -21,7 +21,7 @@ export async function supabaseRest<T>(
       apikey: supabaseAnonKey!,
       Authorization: `Bearer ${supabaseAnonKey}`,
       'Content-Type': 'application/json',
-      Prefer: 'return=representation',
+      Prefer: options.prefer ?? 'return=representation',
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });

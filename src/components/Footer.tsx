@@ -40,9 +40,9 @@ export default function Footer() {
         <div>
           <div style={{ fontWeight: 700, marginBottom: 16, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: 1 }}>Контакты</div>
           {[
-            { icon: <Phone size={14}/>, text: '+7 700 785-50-00' },
+            { icon: <Phone size={14}/>, text: '+7 702 379 72 33' },
             { icon: <Mail size={14}/>, text: 'info@goodhome.kz' },
-            { icon: <MapPin size={14}/>, text: 'г. Алматы, Казахстан' },
+            { icon: <MapPin size={14}/>, text: 'г. Астана, Казахстан' },
           ].map((c, i) => (
             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10 }}>
               <span style={{ color: '#e53935' }}>{c.icon}</span>{c.text}

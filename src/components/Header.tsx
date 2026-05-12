@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { ShoppingCart, Heart, Search, User } from 'lucide-react';
 import { useCart } from '../cartStore';
-import { getCategories } from '../data/products';
+import { useShopData } from '../data/shopDataStore';
 import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
   const { items } = useCart();
+  const { categories } = useShopData();
   const [q, setQ] = useState('');
   const navigate = useNavigate();
-  const cats = getCategories();
 
   const handleSearch = () => { if (q.trim()) navigate(`/catalog?q=${encodeURIComponent(q)}`); };
 
@@ -48,7 +48,7 @@ export default function Header() {
           {/* Phone */}
           <div style={{ flexShrink: 0, textAlign: 'right' }}>
             <div style={{ fontSize: '0.62rem', color: '#999' }}>Звонок бесплатный</div>
-            <a href="tel:+77007855000" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>+7 700 785-50-00</a>
+            <a href="tel:+77023797233" style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>+7 702 379 72 33</a>
           </div>
 
           {/* Icons */}
@@ -73,7 +73,7 @@ export default function Header() {
 
         {/* Navigation - all categories */}
         <nav style={{ borderTop: '1px solid #f0f0f0', display: 'flex', gap: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {cats.map(cat => (
+          {categories.map(cat => (
             <a key={cat.id} href={`/catalog/${cat.slug}`}
               style={{ padding: '10px 14px', fontSize: '0.82rem', fontWeight: 500, color: '#333', textDecoration: 'none', borderBottom: '2px solid transparent', transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0 }}
               onMouseEnter={e => { const el = e.currentTarget; el.style.color = '#e53935'; el.style.borderBottomColor = '#e53935'; }}

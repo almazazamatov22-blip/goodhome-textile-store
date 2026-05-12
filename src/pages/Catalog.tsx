@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { getProducts, getCategories } from '../data/products';
 import { CATEGORY_FILTERS } from '../data/filters';
 import ProductCard from '../components/ProductCard';
 import { ChevronRight } from 'lucide-react';
+import { useShopData } from '../data/shopDataStore';
 
 export default function Catalog() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
 
-  const allProducts = getProducts();
-  const categories = getCategories();
+  const { products: allProducts, categories, loading, error } = useShopData();
   const currentCat = categories.find(c => c.slug === slug);
 
   const [activeSubCat, setActiveSubCat] = useState<string>('');
@@ -73,6 +72,11 @@ export default function Catalog() {
 
       {/* Page title */}
       <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1a1a2e', marginBottom: 16 }}>{pageTitle}</h1>
+      {error && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fff8e1', border: '1px solid #ffe0a3', borderRadius: 8, color: '#8a5a00', fontSize: '0.85rem' }}>
+          Данные временно показаны из локального кеша: {error}
+        </div>
+      )}
 
       {/* SubCategory chips */}
       {currentCat && currentCat.subCategories.length > 0 && (
@@ -177,9 +181,8 @@ export default function Catalog() {
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔍</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Ничего не найдено</div>
-              <div style={{ fontSize: '0.85rem', marginTop: 6 }}>Попробуйте изменить фильтры</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{loading ? 'Загружаем товары...' : 'Ничего не найдено'}</div>
+              {!loading && <div style={{ fontSize: '0.85rem', marginTop: 6 }}>Попробуйте изменить фильтры</div>}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

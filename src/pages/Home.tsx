@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { getProducts, getCategories } from '../data/products';
 import HeroSlider from '../components/HeroSlider';
 import ProductCard from '../components/ProductCard';
 import { Truck, Shield, RotateCcw, CreditCard } from 'lucide-react';
+import { useShopData } from '../data/shopDataStore';
 
 const BENEFITS = [
   { icon: <Truck size={28} color="#e53935" />, title: 'Бесплатная доставка', sub: 'При заказе от 20 000 ₸' },
@@ -12,8 +12,7 @@ const BENEFITS = [
 ];
 
 export default function Home() {
-  const allProducts = getProducts();
-  const categories = getCategories();
+  const { products: allProducts, categories, loading, error } = useShopData();
   const [tab, setTab] = useState<'hit' | 'new' | 'sale'>('hit');
 
   const tabProducts = allProducts.filter(p => p.badge === tab).slice(0, 8);
@@ -23,6 +22,11 @@ export default function Home() {
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '30px 20px' }}>
       {/* Hero */}
       <HeroSlider />
+      {error && (
+        <div style={{ marginTop: 16, padding: '10px 14px', background: '#fff8e1', border: '1px solid #ffe0a3', borderRadius: 8, color: '#8a5a00', fontSize: '0.85rem' }}>
+          Данные временно показаны из локального кеша: {error}
+        </div>
+      )}
 
       {/* Benefits */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, margin: '30px 0' }}>
@@ -64,6 +68,7 @@ export default function Home() {
         ))}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 40 }}>
+        {loading && !showProducts.length && <div style={{ color: '#999' }}>Загружаем товары...</div>}
         {showProducts.map(p => <ProductCard key={p.id} product={p} />)}
       </div>
 

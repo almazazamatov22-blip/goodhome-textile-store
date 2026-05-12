@@ -26,7 +26,7 @@ export interface Category {
 
 export interface Order {
   id: string;
-  userId: string;
+  userId: string | null;
   userName: string;
   items: { title: string; qty: number; price: number }[];
   total: number;
@@ -46,7 +46,7 @@ export interface User {
   totalSpent: number;
 }
 
-const DEFAULT_CATEGORIES: Category[] = [
+export const DEFAULT_CATEGORIES: Category[] = [
   { id: 1, name: 'Постельное белье', slug: 'bedding', image: 'https://images.unsplash.com/photo-1606855637183-ea2a00b6f15f?auto=format&fit=crop&w=600&q=80', subCategories: ['Сатин', 'Страйп-Сатин', 'Поплин', 'Бязь', 'Ранфорс', 'Фланель'] },
   { id: 2, name: 'Подушки', slug: 'pillows', image: 'https://images.unsplash.com/photo-1595191830227-a008b640e215?auto=format&fit=crop&w=400&q=80', subCategories: ['Анатомические', 'Декоративные', 'Детские', 'Ортопедические'] },
   { id: 3, name: 'Одеяла', slug: 'blankets', image: 'https://images.unsplash.com/photo-1612152505858-6c8f94d935f0?auto=format&fit=crop&w=400&q=80', subCategories: ['Бамбук', 'Шерсть', 'Хлопок', 'Всесезонные', 'Летние'] },
