@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Header() {
   const { items } = useCart();
   const { favoriteIds } = useFavorites();
-  const { categories } = useShopData();
+  const { categories, settings } = useShopData();
   const [q, setQ] = useState('');
   const navigate = useNavigate();
 
@@ -48,8 +48,8 @@ export default function Header() {
           </div>
 
           {/* Phone */}
-          <a href="https://wa.me/77023797233" target="_blank" rel="noreferrer" style={{ flexShrink: 0, textAlign: 'right', fontWeight: 800, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>
-            +7 702 379 72 33
+          <a href={settings.whatsapp} target="_blank" rel="noreferrer" style={{ flexShrink: 0, textAlign: 'right', fontWeight: 800, fontSize: '0.95rem', color: '#1a1a2e', textDecoration: 'none' }}>
+            {settings.phone}
           </a>
 
           {/* Icons */}

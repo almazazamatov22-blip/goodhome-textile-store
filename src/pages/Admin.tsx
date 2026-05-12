@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { type Product, type Category } from '../data/products';
+import { DEFAULT_SITE_SETTINGS, type Product, type Category, type Order, type Review, type SiteSettings } from '../data/products';
 import { CATEGORY_FILTERS } from '../data/filters';
-import { BarChart2, ShoppingBag, Tag, LogOut, Users, ShoppingCart, Package, Plus, Pencil, Trash2, X, Save, TrendingUp, Clock, CheckCircle, Truck, XCircle } from 'lucide-react';
+import { BarChart2, ShoppingBag, Tag, LogOut, Users, ShoppingCart, Package, Plus, Pencil, Trash2, X, Save, TrendingUp, Clock, CheckCircle, Truck, XCircle, Settings, MessageSquare, Star } from 'lucide-react';
 
 interface AdminData {
   products: Product[];
   categories: Category[];
-  orders: {
-    id: string;
-    userId: string | null;
-    userName: string;
-    items: { title: string; qty: number; price: number }[];
-    total: number;
-    status: 'pending' | 'confirmed' | 'shipping' | 'delivered' | 'cancelled';
-    date: string;
-    address: string;
-  }[];
+  orders: Order[];
   users: {
     id: string;
     name: string;
@@ -26,6 +17,8 @@ interface AdminData {
     totalOrders: number;
     totalSpent: number;
   }[];
+  reviews: Review[];
+  settings: SiteSettings;
 }
 
 const ADMIN_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin`;
@@ -37,6 +30,8 @@ const NAV = [
   { id: 'users', label: 'Пользователи', icon: <Users size={18}/> },
   { id: 'products', label: 'Товары', icon: <ShoppingBag size={18}/> },
   { id: 'categories', label: 'Категории', icon: <Tag size={18}/> },
+  { id: 'reviews', label: 'Отзывы', icon: <MessageSquare size={18}/> },
+  { id: 'settings', label: 'Настройки', icon: <Settings size={18}/> },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: ReactNode }> = {
@@ -60,8 +55,21 @@ function StatCard({ label, value, color, icon, sub }: { label: string; value: st
   );
 }
 
-function ProductModal({ product, categories, saving, onSave, onClose }: { product: Partial<Product>|null; categories: Category[]; saving: boolean; onSave:(p:Product)=>Promise<void>; onClose:()=>void }) {
-  const [form, setForm] = useState<Partial<Product>>(product || { title:'', category:'', subCategory:'', price:0, image:'', description:'', rating:5, reviews:0, stock:0, attributes: {} });
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',')[1] : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function ProductModal({ product, categories, saving, onSave, onClose, onUpload }: { product: Partial<Product>|null; categories: Category[]; saving: boolean; onSave:(p:Product)=>Promise<void>; onClose:()=>void; onUpload:(file: File, folder: string)=>Promise<string> }) {
+  const [form, setForm] = useState<Partial<Product>>(product || { title:'', category:'', subCategory:'', price:0, image:'', description:'', rating:0, reviews:0, stock:0, attributes: {} });
+  const [uploading, setUploading] = useState(false);
   
   const set = (k: keyof Product, v: Product[keyof Product] | undefined) => setForm(f => ({...f, [k]: v}));
   
@@ -78,13 +86,29 @@ function ProductModal({ product, categories, saving, onSave, onClose }: { produc
         <button onClick={onClose} style={{ position:'absolute', top:14, right:14, background:'none', border:'none', cursor:'pointer' }}><X size={22}/></button>
         <h2 style={{ marginBottom:22, color:'#1a1a2e', fontWeight:800 }}>{product?.id ? 'Редактировать товар' : 'Новый товар'}</h2>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-          {[{l:'Название',k:'title',t:'text'},{l:'URL изображения',k:'image',t:'text'},{l:'Цена (₸)',k:'price',t:'number'},{l:'Старая цена (₸)',k:'oldPrice',t:'number'},{l:'Наличие (шт)',k:'stock',t:'number'},{l:'Рейтинг',k:'rating',t:'number'},{l:'Отзывов',k:'reviews',t:'number'},{l:'Рассрочка (₸/мес)',k:'installment',t:'number'}].map(f => (
+          {[{l:'Название',k:'title',t:'text'},{l:'URL изображения',k:'image',t:'text'},{l:'Цена (₸)',k:'price',t:'number'},{l:'Старая цена (₸)',k:'oldPrice',t:'number'},{l:'Наличие (шт)',k:'stock',t:'number'},{l:'Рассрочка (₸/мес)',k:'installment',t:'number'}].map(f => (
             <div key={f.k}>
               <label style={{ fontSize:'0.78rem', fontWeight:600, color:'#555', display:'block', marginBottom:4 }}>{f.l}</label>
               <input type={f.t} value={String(form[f.k as keyof Product] ?? '')} onChange={e => set(f.k as keyof Product, f.t==='number' ? +e.target.value : e.target.value)}
                 style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem', outline:'none', boxSizing:'border-box' }}/>
             </div>
           ))}
+          <div style={{ gridColumn: '1 / -1', background:'#f8fafc', border:'1px solid #edf0f5', borderRadius:8, padding:12 }}>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#1a1a2e', display:'block', marginBottom:6 }}>Загрузить свое фото</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={async e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              try {
+                const url = await onUpload(file, 'products');
+                setForm(f => ({ ...f, image: url, images: [url, ...(f.images || []).filter(img => img !== url)] }));
+              } finally {
+                setUploading(false);
+                e.currentTarget.value = '';
+              }
+            }} />
+            <div style={{ marginTop:6, fontSize:'0.76rem', color:'#777' }}>{uploading ? 'Загружаем...' : 'Фото сохраняется в Supabase Storage и сразу подставляется в товар.'}</div>
+          </div>
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 14 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize:'0.78rem', fontWeight:600, color:'#555', display:'block', marginBottom:4 }}>Категория</label>
@@ -158,13 +182,141 @@ function ProductModal({ product, categories, saving, onSave, onClose }: { produc
           <textarea value={form.description||''} onChange={e => set('description', e.target.value)} rows={3}
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'7px 11px', fontSize:'0.88rem', outline:'none', resize:'vertical', boxSizing:'border-box' }}/>
         </div>
-        {form.image && <img src={form.image} alt="" onError={e => {
-          e.currentTarget.onerror = null;
-          e.currentTarget.src = 'https://loremflickr.com/900/900/home,textile?lock=12002';
-        }} style={{ width:'100%', height:100, objectFit:'cover', borderRadius:8, marginTop:10 }}/>}
-        <button disabled={saving} onClick={() => onSave({...form, id:product?.id||Date.now(), subCategory: form.subCategory || selectedCat?.subCategories[0] || 'Разное', images:[form.image||'']} as Product)}
+        <div style={{ marginTop:14, padding:'10px 12px', background:'#fff8e1', border:'1px solid #ffe0a3', borderRadius:8, fontSize:'0.8rem', color:'#795200' }}>
+          Рейтинг и количество отзывов не редактируются вручную. Они пересчитываются автоматически только по одобренным отзывам покупателей.
+        </div>
+        {form.image && <img src={form.image} alt="" style={{ width:'100%', height:100, objectFit:'cover', borderRadius:8, marginTop:10 }}/>}
+        <button disabled={saving || uploading || !form.image} onClick={() => onSave({...form, id:product?.id||Date.now(), subCategory: form.subCategory || selectedCat?.subCategories[0] || 'Разное', rating: product?.rating || 0, reviews: product?.reviews || 0, images: form.image ? [form.image, ...(form.images || []).filter(img => img !== form.image)] : []} as Product)}
           style={{ marginTop:18, width:'100%', background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontWeight:700, fontSize:'0.95rem', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
           <Save size={17}/> {saving ? 'Сохраняем...' : 'Сохранить'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CategoryModal({ category, saving, onSave, onClose, onUpload }: { category: Partial<Category>|null; saving: boolean; onSave:(c:Category)=>Promise<void>; onClose:()=>void; onUpload:(file: File, folder: string)=>Promise<string> }) {
+  const [form, setForm] = useState<Partial<Category>>(category || { name:'', slug:'', image:'', subCategories: [] });
+  const [uploading, setUploading] = useState(false);
+  const slug = form.slug || (form.name || '').toLowerCase().trim().replace(/\s+/g, '-');
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#fff', borderRadius:16, padding:28, width:560, maxHeight:'90vh', overflowY:'auto', position:'relative' }}>
+        <button onClick={onClose} style={{ position:'absolute', top:14, right:14, background:'none', border:'none', cursor:'pointer' }}><X size={22}/></button>
+        <h2 style={{ marginBottom:20, color:'#1a1a2e', fontWeight:800 }}>{category?.id ? 'Редактировать категорию' : 'Новая категория'}</h2>
+        <div style={{ display:'grid', gap:12 }}>
+          <div>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#555', display:'block', marginBottom:4 }}>Название</label>
+            <input value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+          </div>
+          <div>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#555', display:'block', marginBottom:4 }}>Slug для URL</label>
+            <input value={slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+          </div>
+          <div>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#555', display:'block', marginBottom:4 }}>URL фото</label>
+            <input value={form.image || ''} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+          </div>
+          <div style={{ background:'#f8fafc', border:'1px solid #edf0f5', borderRadius:8, padding:12 }}>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#1a1a2e', display:'block', marginBottom:6 }}>Загрузить фото категории</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={async e => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              try {
+                const url = await onUpload(file, 'categories');
+                setForm(f => ({ ...f, image: url }));
+              } finally {
+                setUploading(false);
+                e.currentTarget.value = '';
+              }
+            }} />
+            <div style={{ marginTop:6, fontSize:'0.76rem', color:'#777' }}>{uploading ? 'Загружаем...' : 'Фото сохраняется в Supabase Storage.'}</div>
+          </div>
+          {form.image && <img src={form.image} alt="" style={{ width:'100%', height:140, objectFit:'cover', borderRadius:8 }} />}
+          <div>
+            <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#555', display:'block', marginBottom:4 }}>Подкатегории, каждая с новой строки</label>
+            <textarea value={(form.subCategories || []).join('\n')} onChange={e => setForm(f => ({ ...f, subCategories: e.target.value.split('\n').map(v => v.trim()).filter(Boolean) }))} rows={5} style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'9px 12px', resize:'vertical' }} />
+          </div>
+        </div>
+        <button disabled={saving || uploading || !form.name?.trim() || !form.image?.trim()} onClick={() => onSave({ id: category?.id || Date.now(), name: form.name!.trim(), slug: slug.trim(), image: form.image!.trim(), subCategories: form.subCategories || [] })}
+          style={{ marginTop:18, width:'100%', background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'11px', fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+          <Save size={17}/> {saving ? 'Сохраняем...' : 'Сохранить категорию'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsEditor({ settings, saving, onSave }: { settings: SiteSettings; saving: boolean; onSave:(settings:SiteSettings)=>Promise<void> }) {
+  const [form, setForm] = useState<SiteSettings>(settings || DEFAULT_SITE_SETTINGS);
+  const updateSocial = (index: number, key: keyof SiteSettings['socialLinks'][number], value: string) => {
+    setForm(current => ({
+      ...current,
+      socialLinks: current.socialLinks.map((link, i) => i === index ? { ...link, [key]: value } : link),
+    }));
+  };
+  const updateInfo = (index: number, key: 'label' | 'href', value: string) => {
+    setForm(current => ({
+      ...current,
+      infoLinks: current.infoLinks.map((link, i) => i === index ? { ...link, [key]: value } : link),
+    }));
+  };
+
+  return (
+    <div>
+      <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Настройки сайта</h1>
+      <div style={{ background:'#fff', borderRadius:12, padding:20, boxShadow:'0 2px 8px rgba(0,0,0,0.06)', display:'grid', gap:18 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2, minmax(220px, 1fr))', gap:12 }}>
+          {[
+            ['phone', 'Телефон'],
+            ['whatsapp', 'WhatsApp ссылка'],
+            ['email', 'Email'],
+            ['city', 'Город'],
+            ['workHours', 'Режим работы'],
+          ].map(([key, label]) => (
+            <div key={key}>
+              <label style={{ fontSize:'0.78rem', fontWeight:700, color:'#555', display:'block', marginBottom:4 }}>{label}</label>
+              <input value={String(form[key as keyof SiteSettings] || '')} onChange={e => setForm(current => ({ ...current, [key]: e.target.value }))}
+                style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+            </div>
+          ))}
+        </div>
+
+        <section>
+          <h2 style={{ fontSize:'1rem', fontWeight:800, marginBottom:10 }}>Информационные ссылки в футере</h2>
+          <div style={{ display:'grid', gap:8 }}>
+            {form.infoLinks.map((link, index) => (
+              <div key={index} style={{ display:'grid', gridTemplateColumns:'1fr 1.5fr 36px', gap:8 }}>
+                <input value={link.label} onChange={e => updateInfo(index, 'label', e.target.value)} placeholder="Название" style={{ border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+                <input value={link.href} onChange={e => updateInfo(index, 'href', e.target.value)} placeholder="/contacts" style={{ border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+                <button onClick={() => setForm(current => ({ ...current, infoLinks: current.infoLinks.filter((_, i) => i !== index) }))} style={{ border:'none', borderRadius:8, background:'#fce4e4', color:'#e53935', cursor:'pointer' }}><Trash2 size={15}/></button>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setForm(current => ({ ...current, infoLinks: [...current.infoLinks, { label:'Новая ссылка', href:'#' }] }))} style={{ marginTop:10, border:'none', borderRadius:8, background:'#e3f2fd', color:'#1565c0', padding:'8px 12px', fontWeight:700, cursor:'pointer' }}>Добавить ссылку</button>
+        </section>
+
+        <section>
+          <h2 style={{ fontSize:'1rem', fontWeight:800, marginBottom:10 }}>Соцсети и карты</h2>
+          <div style={{ display:'grid', gap:8 }}>
+            {form.socialLinks.map((link, index) => (
+              <div key={index} style={{ display:'grid', gridTemplateColumns:'140px 1fr 1.7fr 36px', gap:8 }}>
+                <select value={link.type} onChange={e => updateSocial(index, 'type', e.target.value)} style={{ border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }}>
+                  {['instagram','youtube','tiktok','whatsapp','2gis','other'].map(type => <option key={type} value={type}>{type}</option>)}
+                </select>
+                <input value={link.label} onChange={e => updateSocial(index, 'label', e.target.value)} placeholder="Название" style={{ border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+                <input value={link.href} onChange={e => updateSocial(index, 'href', e.target.value)} placeholder="https://..." style={{ border:'1px solid #ddd', borderRadius:8, padding:'9px 12px' }} />
+                <button onClick={() => setForm(current => ({ ...current, socialLinks: current.socialLinks.filter((_, i) => i !== index) }))} style={{ border:'none', borderRadius:8, background:'#fce4e4', color:'#e53935', cursor:'pointer' }}><Trash2 size={15}/></button>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setForm(current => ({ ...current, socialLinks: [...current.socialLinks, { type:'other', label:'Новая ссылка', href:'https://' }] }))} style={{ marginTop:10, border:'none', borderRadius:8, background:'#e3f2fd', color:'#1565c0', padding:'8px 12px', fontWeight:700, cursor:'pointer' }}>Добавить соцсеть</button>
+        </section>
+
+        <button disabled={saving} onClick={() => onSave(form)} style={{ background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'12px 18px', fontWeight:800, cursor:saving?'not-allowed':'pointer', justifySelf:'start' }}>
+          {saving ? 'Сохраняем...' : 'Сохранить настройки'}
         </button>
       </div>
     </div>
@@ -174,15 +326,15 @@ function ProductModal({ product, categories, saving, onSave, onClose }: { produc
 export default function Admin() {
   const [page, setPage] = useState('dashboard');
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('goodhome_admin_key') || '');
-  const [data, setData] = useState<AdminData>({ products: [], categories: [], orders: [], users: [] });
+  const [data, setData] = useState<AdminData>({ products: [], categories: [], orders: [], users: [], reviews: [], settings: DEFAULT_SITE_SETTINGS });
   const [editProduct, setEditProduct] = useState<Partial<Product>|null|undefined>(undefined);
-  const [newCatName, setNewCatName] = useState('');
+  const [editCategory, setEditCategory] = useState<Partial<Category>|null|undefined>(undefined);
   const [orderFilter, setOrderFilter] = useState('all');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { products, categories, orders, users } = data;
+  const { products, categories, orders, users, reviews, settings } = data;
 
   const adminRequest = useCallback(async <T,>(resource: string, options: RequestInit = {}) => {
     const response = await fetch(`${ADMIN_ENDPOINT}?resource=${resource}`, {
@@ -210,13 +362,28 @@ export default function Admin() {
     setError(null);
     try {
       sessionStorage.setItem('goodhome_admin_key', adminKey);
-      setData(await adminRequest<AdminData>('all'));
+      const nextData = await adminRequest<AdminData>('all');
+      setData({ ...nextData, settings: nextData.settings || DEFAULT_SITE_SETTINGS, reviews: nextData.reviews || [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить админ-данные');
     } finally {
       setLoading(false);
     }
   }, [adminKey, adminRequest]);
+
+  const uploadImage = useCallback(async (file: File, folder: string) => {
+    const base64 = await fileToBase64(file);
+    const result = await adminRequest<{ url: string }>('upload-image', {
+      method: 'POST',
+      body: JSON.stringify({
+        fileName: file.name,
+        contentType: file.type,
+        base64,
+        folder,
+      }),
+    });
+    return result.url;
+  }, [adminRequest]);
 
   useEffect(() => {
     if (!adminKey) return;
@@ -232,7 +399,7 @@ export default function Admin() {
       const exists = products.some(item => item.id === product.id);
       const saved = await adminRequest<Product[]>(`products&id=${product.id}`, {
         method: exists ? 'PATCH' : 'POST',
-        body: JSON.stringify(product),
+        body: JSON.stringify({ ...product, rating: product.rating || 0, reviews: product.reviews || 0 }),
       });
       setData(prev => ({
         ...prev,
@@ -246,22 +413,58 @@ export default function Admin() {
     }
   };
 
-  const handleAddCategory = async () => {
-    if (!newCatName.trim()) return;
-    const slug = newCatName.toLowerCase().trim().replace(/\s+/g, '-');
-    const category = {
-      id: Date.now(),
-      name: newCatName.trim(),
-      slug,
-      image: 'https://loremflickr.com/900/900/home,textile?lock=12001',
-      subCategories: [],
-    };
-    const saved = await adminRequest<Category[]>('categories', {
-      method: 'POST',
-      body: JSON.stringify(category),
+  const handleSaveCategory = async (category: Category) => {
+    setSaving(true);
+    try {
+      const exists = categories.some(item => item.id === category.id);
+      const saved = await adminRequest<Category[]>(`categories&id=${category.id}`, {
+        method: exists ? 'PATCH' : 'POST',
+        body: JSON.stringify(category),
+      });
+      setData(prev => ({
+        ...prev,
+        categories: exists
+          ? prev.categories.map(item => item.id === saved[0].id ? saved[0] : item)
+          : [...prev.categories, saved[0]],
+      }));
+      setEditCategory(undefined);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateOrder = async (order: Order, patch: Partial<Order>) => {
+    const saved = await adminRequest<Order[]>(`orders&id=${order.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...order, ...patch }),
     });
-    setData(prev => ({ ...prev, categories: [...prev.categories, saved[0]] }));
-    setNewCatName('');
+    setData(prev => ({ ...prev, orders: prev.orders.map(item => item.id === order.id ? saved[0] : item) }));
+  };
+
+  const handleUpdateReview = async (review: Review, patch: Partial<Review>) => {
+    await adminRequest<Review[]>(`reviews&id=${review.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...review, ...patch }),
+    });
+    await loadAdminData();
+  };
+
+  const handleDeleteReview = async (review: Review) => {
+    await adminRequest<Review[]>(`reviews&id=${review.id}`, { method: 'DELETE' });
+    await loadAdminData();
+  };
+
+  const handleSaveSettings = async (nextSettings: SiteSettings) => {
+    setSaving(true);
+    try {
+      const saved = await adminRequest<{ value: SiteSettings }[]>('settings', {
+        method: 'PATCH',
+        body: JSON.stringify(nextSettings),
+      });
+      setData(prev => ({ ...prev, settings: saved[0]?.value || nextSettings }));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalRevenue = orders.filter(o => o.status==='delivered').reduce((s,o) => s+o.total, 0);
@@ -301,7 +504,10 @@ export default function Admin() {
   return (
     <div style={{ display:'flex', minHeight:'100vh', fontFamily:'Roboto,sans-serif', background:'#f4f6fb' }}>
       {editProduct !== undefined && (
-        <ProductModal product={editProduct} categories={categories} saving={saving} onSave={handleSaveProduct} onClose={() => setEditProduct(undefined)}/>
+        <ProductModal product={editProduct} categories={categories} saving={saving} onSave={handleSaveProduct} onClose={() => setEditProduct(undefined)} onUpload={uploadImage}/>
+      )}
+      {editCategory !== undefined && (
+        <CategoryModal category={editCategory} saving={saving} onSave={handleSaveCategory} onClose={() => setEditCategory(undefined)} onUpload={uploadImage}/>
       )}
 
       {/* Sidebar */}
@@ -399,7 +605,7 @@ export default function Admin() {
             <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr style={{ background:'#f4f6fb' }}>
-                  {['ID','Покупатель','Товары','Сумма','Статус','Адрес','Дата'].map(h => (
+                  {['ID','Покупатель','Товары','Сумма','Статус','Доставка','Адрес','Дата'].map(h => (
                     <th key={h} style={{ padding:'11px 14px', textAlign:'left', fontSize:'0.76rem', fontWeight:700, color:'#666', textTransform:'uppercase' }}>{h}</th>
                   ))}
                 </tr></thead>
@@ -412,10 +618,31 @@ export default function Admin() {
                         <td style={{ padding:'10px 14px', fontSize:'0.85rem', fontWeight:600 }}>{o.userName}</td>
                         <td style={{ padding:'10px 14px', fontSize:'0.78rem', color:'#666', maxWidth:160 }}>{o.items.map(i=>`${i.title} x${i.qty}`).join(', ')}</td>
                         <td style={{ padding:'10px 14px', fontWeight:700, color:'#e53935' }}>{o.total.toLocaleString()} ₸</td>
-                        <td style={{ padding:'10px 14px' }}>
-                          <span style={{ display:'inline-flex', alignItems:'center', gap:4, background:s.bg, color:s.color, fontSize:'0.72rem', fontWeight:700, padding:'3px 9px', borderRadius:20 }}>
-                            {s.icon}{s.label}
-                          </span>
+                        <td style={{ padding:'10px 14px', minWidth:150 }}>
+                          <select value={o.status} onChange={e => void handleUpdateOrder(o, { status: e.target.value as Order['status'] })}
+                            style={{ width:'100%', border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.78rem', color:s.color, background:s.bg, fontWeight:700 }}>
+                            {Object.entries(STATUS_MAP).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding:'10px 14px', minWidth:260 }}>
+                          <div style={{ display:'grid', gap:6 }}>
+                            <select value={o.deliveryStatus || 'not_started'} onChange={e => void handleUpdateOrder(o, { deliveryStatus: e.target.value as Order['deliveryStatus'] })}
+                              style={{ border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.76rem' }}>
+                              <option value="not_started">Не начата</option>
+                              <option value="courier_assigned">Курьер назначен</option>
+                              <option value="shipped">Отправлен</option>
+                              <option value="delivered">Доставлен</option>
+                              <option value="returned">Возврат</option>
+                            </select>
+                            <input value={o.deliveryService || ''} onChange={e => void handleUpdateOrder(o, { deliveryService: e.target.value })} placeholder="Служба доставки"
+                              style={{ border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.76rem' }} />
+                            <input value={o.trackingNumber || ''} onChange={e => void handleUpdateOrder(o, { trackingNumber: e.target.value })} placeholder="Трек-номер"
+                              style={{ border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.76rem' }} />
+                            <input value={o.deliveryPrice ?? ''} onChange={e => void handleUpdateOrder(o, { deliveryPrice: e.target.value ? Number(e.target.value) : null })} placeholder="Цена доставки"
+                              style={{ border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.76rem' }} />
+                            <textarea value={o.deliveryComment || ''} onChange={e => void handleUpdateOrder(o, { deliveryComment: e.target.value })} placeholder="Комментарий по доставке" rows={2}
+                              style={{ border:'1px solid #ddd', borderRadius:7, padding:'6px 8px', fontSize:'0.76rem', resize:'vertical' }} />
+                          </div>
                         </td>
                         <td style={{ padding:'10px 14px', fontSize:'0.78rem', color:'#888' }}>{o.address}</td>
                         <td style={{ padding:'10px 14px', fontSize:'0.78rem', color:'#888' }}>{o.date}</td>
@@ -476,21 +703,19 @@ export default function Admin() {
             <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead><tr style={{ background:'#f4f6fb' }}>
-                  {['Фото','Название','Категория','Цена','Наличие','Бейдж',''].map(h => (
+                  {['Фото','Название','Категория','Цена','Наличие','Отзывы','Бейдж',''].map(h => (
                     <th key={h} style={{ padding:'11px 14px', textAlign:'left', fontSize:'0.76rem', fontWeight:700, color:'#666', textTransform:'uppercase' }}>{h}</th>
                   ))}
                 </tr></thead>
                 <tbody>
                   {products.map(p => (
                     <tr key={p.id} style={{ borderTop:'1px solid #f0f0f0' }}>
-                      <td style={{ padding:'9px 14px' }}><img src={p.image} alt="" onError={e => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${p.id + 90000}`;
-                      }} style={{ width:42, height:42, borderRadius:6, objectFit:'cover' }}/></td>
+                      <td style={{ padding:'9px 14px' }}><img src={p.image} alt="" style={{ width:42, height:42, borderRadius:6, objectFit:'cover' }}/></td>
                       <td style={{ padding:'9px 14px', fontWeight:600, fontSize:'0.85rem', maxWidth:200 }}>{p.title}</td>
                       <td style={{ padding:'9px 14px', fontSize:'0.8rem', color:'#666' }}>{p.category}</td>
                       <td style={{ padding:'9px 14px', fontWeight:700, color:'#e53935' }}>{p.price.toLocaleString()} ₸</td>
                       <td style={{ padding:'9px 14px', fontSize:'0.83rem' }}>{p.stock} шт</td>
+                      <td style={{ padding:'9px 14px', fontSize:'0.8rem', color:'#666' }}>{p.reviews ? `${p.rating.toFixed(1)} / ${p.reviews}` : 'нет'}</td>
                       <td style={{ padding:'9px 14px' }}>
                         {p.badge && <span style={{ fontSize:'0.7rem', fontWeight:700, padding:'2px 8px', borderRadius:4, background:'#f0f0f0', color:'#333' }}>{p.badge}</span>}
                       </td>
@@ -515,35 +740,85 @@ export default function Admin() {
         {/* CATEGORIES */}
         {page==='categories' && (
           <div>
-            <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Категории</h1>
-            <div style={{ display:'flex', gap:10, marginBottom:22 }}>
-              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Название новой категории"
-                style={{ flex:1, border:'1px solid #ddd', borderRadius:8, padding:'9px 14px', fontSize:'0.9rem', outline:'none' }}/>
-              <button onClick={() => void handleAddCategory()}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
+              <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e' }}>Категории</h1>
+              <button onClick={() => setEditCategory(null)}
                 style={{ background:'#e53935', color:'#fff', border:'none', borderRadius:8, padding:'9px 18px', fontWeight:700, cursor:'pointer', display:'flex', gap:6, alignItems:'center' }}>
-                <Plus size={16}/> Добавить
+                <Plus size={16}/> Добавить категорию
               </button>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
               {categories.map(cat => (
                 <div key={cat.id} style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
-                  <img src={cat.image} alt={cat.name} onError={e => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${cat.id + 80000}`;
-                  }} style={{ width:'100%', height:90, objectFit:'cover' }}/>
+                  <img src={cat.image} alt={cat.name} style={{ width:'100%', height:90, objectFit:'cover' }}/>
                   <div style={{ padding:'11px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontWeight:700, fontSize:'0.9rem', color:'#1a1a2e' }}>{cat.name}</span>
-                    <button onClick={async () => {
-                      if (!confirm('Удалить?')) return;
-                      await adminRequest<Category[]>(`categories&id=${cat.id}`, { method: 'DELETE' });
-                      setData(prev => ({ ...prev, categories: prev.categories.filter(item => item.id !== cat.id) }));
-                    }}
-                      style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
+                    <div>
+                      <span style={{ fontWeight:700, fontSize:'0.9rem', color:'#1a1a2e', display:'block' }}>{cat.name}</span>
+                      <span style={{ fontSize:'0.72rem', color:'#888' }}>{cat.subCategories.length} подкатегорий</span>
+                    </div>
+                    <div style={{ display:'flex', gap:7 }}>
+                      <button onClick={() => setEditCategory(cat)} style={{ background:'#e3f2fd', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#1565c0' }}><Pencil size={13}/></button>
+                      <button onClick={async () => {
+                        if (!confirm('Удалить?')) return;
+                        await adminRequest<Category[]>(`categories&id=${cat.id}`, { method: 'DELETE' });
+                        setData(prev => ({ ...prev, categories: prev.categories.filter(item => item.id !== cat.id) }));
+                      }}
+                        style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {/* REVIEWS */}
+        {page==='reviews' && (
+          <div>
+            <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Отзывы ({reviews.length})</h1>
+            <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr style={{ background:'#f4f6fb' }}>
+                  {['Товар','Покупатель','Оценка','Отзыв','Статус','Дата',''].map(h => (
+                    <th key={h} style={{ padding:'11px 14px', textAlign:'left', fontSize:'0.76rem', fontWeight:700, color:'#666', textTransform:'uppercase' }}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {reviews.map(review => {
+                    const product = products.find(item => item.id === review.productId);
+                    return (
+                      <tr key={review.id} style={{ borderTop:'1px solid #f0f0f0' }}>
+                        <td style={{ padding:'10px 14px', fontSize:'0.82rem', fontWeight:600, maxWidth:180 }}>{product?.title || review.productId}</td>
+                        <td style={{ padding:'10px 14px', fontSize:'0.82rem' }}>
+                          <div style={{ fontWeight:700 }}>{review.customerName}</div>
+                          <div style={{ color:'#888', fontSize:'0.75rem' }}>{review.customerContact}</div>
+                        </td>
+                        <td style={{ padding:'10px 14px', color:'#f57c00', fontWeight:800 }}><Star size={14} fill="#f57c00" color="#f57c00"/> {review.rating}</td>
+                        <td style={{ padding:'10px 14px', fontSize:'0.82rem', color:'#555', maxWidth:260 }}>{review.text}</td>
+                        <td style={{ padding:'10px 14px', fontSize:'0.82rem', fontWeight:700 }}>{review.status}</td>
+                        <td style={{ padding:'10px 14px', fontSize:'0.78rem', color:'#888' }}>{new Date(review.createdAt).toLocaleDateString('ru-RU')}</td>
+                        <td style={{ padding:'10px 14px' }}>
+                          <div style={{ display:'flex', gap:7 }}>
+                            <button onClick={() => void handleUpdateReview(review, { status:'approved' })} style={{ background:'#e8f5e9', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#2e7d32', fontWeight:700 }}>OK</button>
+                            <button onClick={() => void handleUpdateReview(review, { status:'rejected' })} style={{ background:'#fff8e1', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#f57c00', fontWeight:700 }}>Откл.</button>
+                            <button onClick={() => void handleDeleteReview(review)} style={{ background:'#fce4e4', border:'none', borderRadius:6, padding:'5px 9px', cursor:'pointer', color:'#e53935' }}><Trash2 size={13}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!reviews.length && (
+                    <tr><td colSpan={7} style={{ padding:24, color:'#888', textAlign:'center' }}>Отзывов пока нет. Рейтинг товаров будет нулевым, пока покупатели не оставят отзывы.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* SETTINGS */}
+        {page==='settings' && (
+          <SettingsEditor settings={settings} saving={saving} onSave={handleSaveSettings} />
         )}
 
       </main>

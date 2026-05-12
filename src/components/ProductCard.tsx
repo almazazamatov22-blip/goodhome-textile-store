@@ -2,28 +2,45 @@ import { ShoppingCart, Star, Heart } from 'lucide-react';
 import { type Product } from '../data/products';
 import { useCart } from '../cartStore';
 import { useFavorites } from '../data/favoritesContext';
-
-function fallbackKeywords(product: Product) {
-  const text = `${product.category} ${product.subCategory} ${product.title}`.toLowerCase();
-  if (text.includes('подуш')) return 'pillow,bedroom';
-  if (text.includes('одеял')) return 'blanket,bed';
-  if (text.includes('простын')) return 'bed,sheets';
-  if (text.includes('покрывал') || text.includes('плед')) return 'bedspread,quilt';
-  if (text.includes('полотен')) return 'towels,bathroom';
-  if (text.includes('халат')) return 'bathrobe,spa';
-  if (text.includes('кух')) return 'kitchen,towels';
-  if (text.includes('дет')) return 'children,bedding';
-  if (text.includes('тапоч')) return 'slippers,home';
-  if (text.includes('штор') || text.includes('ткан')) return 'curtains,interior';
-  return 'bedding,bedroom';
-}
+import { useState } from 'react';
+import { useShopData } from '../data/shopDataStore';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { createReview } = useShopData();
   const favorite = isFavorite(product.id);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [review, setReview] = useState({ customerName: '', customerContact: '', rating: 5, text: '' });
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const submitReview = async () => {
+    if (!review.customerName.trim() || !review.customerContact.trim() || !review.text.trim()) {
+      alert('Заполните имя, контакт и текст отзыва');
+      return;
+    }
+
+    setReviewSaving(true);
+    try {
+      await createReview({
+        productId: product.id,
+        customerName: review.customerName.trim(),
+        customerContact: review.customerContact.trim(),
+        rating: review.rating,
+        text: review.text.trim(),
+      });
+      setReviewOpen(false);
+      setReview({ customerName: '', customerContact: '', rating: 5, text: '' });
+      alert('Спасибо. Отзыв появится после проверки администратором.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Не удалось отправить отзыв');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   return (
+    <>
     <div style={{
       background: '#fff', borderRadius: 12, overflow: 'hidden',
       border: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column',
@@ -59,10 +76,6 @@ export default function ProductCard({ product }: { product: Product }) {
       {/* Image */}
       <div style={{ height: 200, overflow: 'hidden', background: '#f9f9f9' }}>
         <img src={product.image} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
-          onError={e => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = `https://loremflickr.com/900/900/${fallbackKeywords(product)}?lock=${product.id + 90000}`;
-          }}
           onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
           onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
         />
@@ -71,10 +84,16 @@ export default function ProductCard({ product }: { product: Product }) {
       <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {/* Rating */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          {[1,2,3,4,5].map(s => (
-            <Star key={s} size={12} fill={s <= Math.round(product.rating) ? '#FFC107' : 'none'} color={s <= Math.round(product.rating) ? '#FFC107' : '#ddd'} />
-          ))}
-          <span style={{ fontSize: '0.72rem', color: '#999', marginLeft: 2 }}>{product.reviews}</span>
+          {product.reviews > 0 ? (
+            <>
+              {[1,2,3,4,5].map(s => (
+                <Star key={s} size={12} fill={s <= Math.round(product.rating) ? '#FFC107' : 'none'} color={s <= Math.round(product.rating) ? '#FFC107' : '#ddd'} />
+              ))}
+              <span style={{ fontSize: '0.72rem', color: '#999', marginLeft: 2 }}>{product.reviews}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: '0.72rem', color: '#999' }}>Нет отзывов</span>
+          )}
         </div>
 
         {/* Title */}
@@ -101,7 +120,40 @@ export default function ProductCard({ product }: { product: Product }) {
         >
           <ShoppingCart size={16} /> В корзину
         </button>
+        <button onClick={(e) => { e.stopPropagation(); setReviewOpen(true); }}
+          style={{ background: 'transparent', border: 'none', color: '#1565c0', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', padding: '2px 0 0' }}>
+          Оставить отзыв
+        </button>
       </div>
     </div>
+    {reviewOpen && (
+      <div onClick={() => setReviewOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', background: '#fff', borderRadius: 12, padding: 22, boxShadow: '0 12px 40px rgba(0,0,0,0.18)' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1a1a2e', marginBottom: 8 }}>Отзыв о товаре</h2>
+          <p style={{ fontSize: '0.82rem', color: '#666', lineHeight: 1.45, marginBottom: 14 }}>{product.title}</p>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <input value={review.customerName} onChange={e => setReview(v => ({ ...v, customerName: e.target.value }))} placeholder="Ваше имя"
+              style={{ border: '1px solid #ddd', borderRadius: 8, padding: '10px 12px', outline: 'none' }} />
+            <input value={review.customerContact} onChange={e => setReview(v => ({ ...v, customerContact: e.target.value }))} placeholder="Телефон или email для проверки"
+              style={{ border: '1px solid #ddd', borderRadius: 8, padding: '10px 12px', outline: 'none' }} />
+            <select value={review.rating} onChange={e => setReview(v => ({ ...v, rating: Number(e.target.value) }))}
+              style={{ border: '1px solid #ddd', borderRadius: 8, padding: '10px 12px', outline: 'none' }}>
+              {[5,4,3,2,1].map(value => <option key={value} value={value}>{value} из 5</option>)}
+            </select>
+            <textarea value={review.text} onChange={e => setReview(v => ({ ...v, text: e.target.value }))} rows={4} placeholder="Напишите отзыв"
+              style={{ border: '1px solid #ddd', borderRadius: 8, padding: '10px 12px', outline: 'none', resize: 'vertical' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <button disabled={reviewSaving} onClick={() => void submitReview()} style={{ flex: 1, background: '#e53935', color: '#fff', border: 'none', borderRadius: 8, padding: '11px', fontWeight: 800, cursor: reviewSaving ? 'not-allowed' : 'pointer' }}>
+              {reviewSaving ? 'Отправляем...' : 'Отправить'}
+            </button>
+            <button onClick={() => setReviewOpen(false)} style={{ flex: 1, background: '#f4f6fb', color: '#555', border: 'none', borderRadius: 8, padding: '11px', fontWeight: 800, cursor: 'pointer' }}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

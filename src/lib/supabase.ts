@@ -31,5 +31,6 @@ export async function supabaseRest<T>(
     throw new Error(`Supabase ${method} ${table} failed: ${response.status} ${detail}`);
   }
 
-  return response.json() as Promise<T>;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : []) as T;
 }

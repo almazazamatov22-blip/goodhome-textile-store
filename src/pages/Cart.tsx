@@ -33,6 +33,11 @@ export default function Cart() {
         status: 'pending',
         date: new Date().toISOString().slice(0, 10),
         address: `${form.address.trim()}; тел. ${form.phone.trim()}`,
+        deliveryStatus: 'not_started',
+        deliveryService: null,
+        trackingNumber: null,
+        deliveryPrice: null,
+        deliveryComment: null,
       });
       clear();
       alert(`Заказ ${id} создан`);
@@ -54,10 +59,7 @@ export default function Cart() {
         <h1 style={{ fontWeight: 800, color: '#1a1a2e', marginBottom: 24 }}>Корзина ({items.length})</h1>
         {items.map(item => (
           <div key={item.id} style={{ background: '#fff', borderRadius: 12, padding: 20, display: 'flex', gap: 16, marginBottom: 12, border: '1px solid #f0f0f0' }}>
-            <img src={item.image} alt={item.title} onError={e => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${item.id + 90000}`;
-            }} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
+            <img src={item.image} alt={item.title} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>{item.title}</div>
               <div style={{ color: '#e53935', fontWeight: 800, fontSize: '1.1rem' }}>{item.price.toLocaleString()} ₸</div>

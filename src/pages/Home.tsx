@@ -48,10 +48,6 @@ export default function Home() {
           <a key={cat.id} href={`/catalog/${cat.slug}`} style={{ textDecoration: 'none', textAlign: 'center' }}>
             <div style={{ borderRadius: 12, overflow: 'hidden', height: 110, marginBottom: 8, position: 'relative' }}>
               <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }}
-                onError={e => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = `https://loremflickr.com/900/900/home,textile?lock=${cat.id + 80000}`;
-                }}
                 onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.08)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
               />

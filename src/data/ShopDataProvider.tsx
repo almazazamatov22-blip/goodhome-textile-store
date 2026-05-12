@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
   DEFAULT_CATEGORIES,
+  DEFAULT_SITE_SETTINGS,
   getCategories,
   getOrders,
   getProducts,
@@ -13,17 +14,22 @@ import {
   type Category,
   type Order,
   type Product,
+  type Review,
+  type SiteSettings,
   type User,
 } from './products';
 import {
   createSupabaseCategory,
   createSupabaseOrder,
   createSupabaseProduct,
+  createSupabaseReview,
   deleteSupabaseCategory,
   deleteSupabaseProduct,
   fetchSupabaseCategories,
   fetchSupabaseOrders,
   fetchSupabaseProducts,
+  fetchSupabaseReviews,
+  fetchSupabaseSettings,
   fetchSupabaseUsers,
   updateSupabaseCategory,
   updateSupabaseProduct,
@@ -41,10 +47,12 @@ function normalizeProduct(product: Product): Product {
 }
 
 export function ShopDataProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(getProducts());
-  const [categories, setCategories] = useState<Category[]>(getCategories());
-  const [orders, setOrders] = useState<Order[]>(getOrders());
-  const [users, setUsers] = useState<User[]>(getUsers());
+  const [products, setProducts] = useState<Product[]>(isSupabaseConfigured ? [] : getProducts());
+  const [categories, setCategories] = useState<Category[]>(isSupabaseConfigured ? [] : getCategories());
+  const [orders, setOrders] = useState<Order[]>(isSupabaseConfigured ? [] : getOrders());
+  const [users, setUsers] = useState<User[]>(isSupabaseConfigured ? [] : getUsers());
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,35 +62,45 @@ export function ShopDataProvider({ children }: { children: ReactNode }) {
       setProducts(getProducts());
       setOrders(getOrders());
       setUsers(getUsers());
+      setReviews([]);
+      setSettings(DEFAULT_SITE_SETTINGS);
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const [nextProducts, nextCategories, nextOrders, nextUsers] = await Promise.all([
+      const [nextProducts, nextCategories, nextOrders, nextUsers, nextReviews, nextSettings] = await Promise.all([
         fetchSupabaseProducts(),
         fetchSupabaseCategories(),
         fetchSupabaseOrders(),
         fetchSupabaseUsers(),
+        fetchSupabaseReviews(),
+        fetchSupabaseSettings(),
       ]);
 
       setProducts(nextProducts);
       setCategories(nextCategories.length ? nextCategories : DEFAULT_CATEGORIES);
       setOrders(nextOrders);
       setUsers(nextUsers);
+      setReviews(nextReviews);
+      setSettings(nextSettings);
 
-      saveProducts(nextProducts);
-      saveCategories(nextCategories.length ? nextCategories : DEFAULT_CATEGORIES);
-      saveOrders(nextOrders);
-      saveUsers(nextUsers);
+      if (!isSupabaseConfigured) {
+        saveProducts(nextProducts);
+        saveCategories(nextCategories.length ? nextCategories : DEFAULT_CATEGORIES);
+        saveOrders(nextOrders);
+        saveUsers(nextUsers);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Не удалось загрузить данные из Supabase';
       setError(message);
-      setProducts(getProducts());
-      setCategories(getCategories().length ? getCategories() : DEFAULT_CATEGORIES);
-      setOrders(getOrders());
-      setUsers(getUsers());
+      setProducts(isSupabaseConfigured ? [] : getProducts());
+      setCategories(isSupabaseConfigured ? [] : getCategories().length ? getCategories() : DEFAULT_CATEGORIES);
+      setOrders(isSupabaseConfigured ? [] : getOrders());
+      setUsers(isSupabaseConfigured ? [] : getUsers());
+      setReviews([]);
+      setSettings(DEFAULT_SITE_SETTINGS);
     } finally {
       setLoading(false);
     }
@@ -168,12 +186,21 @@ export function ShopDataProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const createReview = useCallback(async (review: Omit<Review, 'id' | 'status' | 'createdAt'>) => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Отзывы доступны только при подключенной базе данных');
+    }
+    await createSupabaseReview(review);
+  }, []);
+
   return (
     <ShopDataContext.Provider value={{
       products,
       categories,
       orders,
       users,
+      reviews,
+      settings,
       loading,
       error,
       refresh,
@@ -182,6 +209,7 @@ export function ShopDataProvider({ children }: { children: ReactNode }) {
       saveCategory,
       deleteCategory: removeCategory,
       createOrder,
+      createReview,
     }}>
       {children}
     </ShopDataContext.Provider>

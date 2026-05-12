@@ -1,5 +1,5 @@
-import { Instagram, Phone, Mail, MapPin, Youtube } from 'lucide-react';
-import { INFO_LINKS } from '../data/infoLinks';
+import { Instagram, Phone, Mail, MapPin, Youtube, MessageCircle, Music2, MapPinned, Link as LinkIcon } from 'lucide-react';
+import { useShopData } from '../data/shopDataStore';
 
 const CATALOG_LINKS = [
   { title: 'Постельное белье', href: '/catalog/bedding' },
@@ -11,6 +11,16 @@ const CATALOG_LINKS = [
 ];
 
 export default function Footer() {
+  const { settings } = useShopData();
+  const socialIcon = (type: string) => {
+    if (type === 'instagram') return <Instagram size={18}/>;
+    if (type === 'youtube') return <Youtube size={18}/>;
+    if (type === 'tiktok') return <Music2 size={18}/>;
+    if (type === 'whatsapp') return <MessageCircle size={18}/>;
+    if (type === '2gis') return <MapPinned size={18}/>;
+    return <LinkIcon size={18}/>;
+  };
+
   return (
     <footer style={{ background: '#1a1a2e', color: '#fff', marginTop: 60 }}>
       {/* Main footer */}
@@ -23,18 +33,18 @@ export default function Footer() {
             Магазин качественного домашнего текстиля. Постельное белье, полотенца, подушки и одеяла из Турции.
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
-            {[{ icon: <Instagram size={18}/>, href: 'https://instagram.com/goodhomekz' }, { icon: <Youtube size={18}/> }].map((s, i) => (
-              <a key={i} href={s.href || '#'} style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', textDecoration: 'none', transition: 'background 0.2s' }}
+            {settings.socialLinks.map((s, i) => (
+              <a key={`${s.type}-${i}`} href={s.href || '#'} target={s.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" title={s.label} style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', textDecoration: 'none', transition: 'background 0.2s' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#e53935')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-              >{s.icon}</a>
+              >{socialIcon(s.type)}</a>
             ))}
           </div>
         </div>
 
         {[
           { title: 'Каталог', links: CATALOG_LINKS },
-          { title: 'Информация', links: INFO_LINKS.map(link => ({ title: link.title, href: link.path })) },
+          { title: 'Информация', links: settings.infoLinks.map(link => ({ title: link.label, href: link.href })) },
         ].map(col => (
           <div key={col.title}>
             <div style={{ fontWeight: 700, marginBottom: 16, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: 1 }}>{col.title}</div>
@@ -49,16 +59,16 @@ export default function Footer() {
 
         <div>
           <div style={{ fontWeight: 700, marginBottom: 16, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: 1 }}>Контакты</div>
-          <a href="https://wa.me/77023797233" target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ color: '#e53935' }}><Phone size={14}/></span>+7 702 379 72 33
+          <a href={settings.whatsapp} target="_blank" rel="noreferrer" style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ color: '#e53935' }}><Phone size={14}/></span>{settings.phone}
           </a>
-          <a href="mailto:info@goodhome.kz" style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
-            <span style={{ color: '#e53935' }}><Mail size={14}/></span>info@goodhome.kz
+          <a href={`mailto:${settings.email}`} style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10, textDecoration: 'none' }}>
+            <span style={{ color: '#e53935' }}><Mail size={14}/></span>{settings.email}
           </a>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: '#888', fontSize: '0.85rem', marginBottom: 10 }}>
-            <span style={{ color: '#e53935' }}><MapPin size={14}/></span>г. Астана, Казахстан
+            <span style={{ color: '#e53935' }}><MapPin size={14}/></span>{settings.city}
           </div>
-          <div style={{ marginTop: 12, fontSize: '0.75rem', color: '#666' }}>ПН-ВС: 10:00 – 20:00</div>
+          <div style={{ marginTop: 12, fontSize: '0.75rem', color: '#666' }}>{settings.workHours}</div>
         </div>
       </div>
 

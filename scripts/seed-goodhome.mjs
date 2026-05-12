@@ -2,32 +2,6 @@ import fs from 'node:fs';
 
 const img = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=80`;
 
-const IMAGE_KEYWORDS_BY_SLUG = {
-  bedding: ['bedding,bedroom', 'bed,sheets', 'duvet,cover', 'white,bedding'],
-  pillows: ['pillow,bedroom', 'cushion,sofa', 'pillow,home', 'decorative,pillow'],
-  blankets: ['blanket,bed', 'quilt,bed', 'comforter,bed', 'wool,blanket'],
-  sheets: ['bed,sheets', 'linen,bed', 'fitted,sheet', 'white,sheets'],
-  bedspreads: ['bedspread,quilt', 'throw,blanket', 'quilt,bed', 'plaid,bed'],
-  towels: ['towels,bathroom', 'bath,towel', 'terry,towel', 'towel,spa'],
-  robes: ['bathrobe,spa', 'robe,hotel', 'bathrobe,home', 'spa,robe'],
-  kitchen: ['kitchen,towels', 'tablecloth,dining', 'napkin,table', 'kitchen,textile'],
-  children: ['children,bedding', 'baby,blanket', 'kids,room', 'nursery,bedding'],
-  slippers: ['slippers,home', 'hotel,slippers', 'soft,slippers', 'house,slippers'],
-  curtains: ['curtains,interior', 'window,curtains', 'fabric,curtains', 'linen,curtains'],
-};
-
-const textilePhoto = (keywords, lock, size = 900) => `https://loremflickr.com/${size}/${size}/${keywords}?lock=${lock}`;
-
-function categoryPhoto(category) {
-  const keywords = IMAGE_KEYWORDS_BY_SLUG[category.slug]?.[0] || 'home,textile';
-  return textilePhoto(keywords, category.id * 1000 + 1);
-}
-
-function productPhoto(category, index, variant = 0) {
-  const keywords = pick(IMAGE_KEYWORDS_BY_SLUG[category.slug] || ['home,textile'], index + variant);
-  return textilePhoto(keywords, category.id * 1000 + index * 10 + variant + 11);
-}
-
 const categories = [
   {
     id: 1,
@@ -152,13 +126,6 @@ const categories = [
   },
 ];
 
-const profiles = [
-  ['guest', 'Гость', 'guest@goodhome.kz', '+7 702 379 72 33', '2026-05-10', 0, 0, 0],
-  ['u1', 'Аружан Садыкова', 'aruzhan@example.kz', '+7 701 111 22 33', '2026-03-15', 2, 6, 184000],
-  ['u2', 'Данияр Ахметов', 'daniyar@example.kz', '+7 707 444 55 66', '2026-04-02', 0, 3, 76000],
-  ['u3', 'Мадина Касым', 'madina@example.kz', '+7 705 777 88 99', '2026-04-20', 4, 2, 53000],
-];
-
 function pick(values, index) {
   return values[index % values.length];
 }
@@ -186,13 +153,13 @@ const productRows = [];
 for (const category of categories) {
   for (let index = 0; index < 20; index += 1) {
     const id = category.id * 1000 + index + 1;
-    const image = productPhoto(category, index);
+    const image = pick(category.images, index);
     const price = category.base + (index % 5) * 1200 + Math.floor(index / 5) * 2500;
     const oldPrice = index % 6 === 0 ? price + 4500 : null;
     const badge = index % 7 === 0 ? 'hit' : index % 5 === 0 ? 'sale' : index % 4 === 0 ? 'new' : null;
     const subCategory = pick(category.subCategories, index);
     const title = `${pick(category.titles, index)} ${subCategory} GH-${index + 1}`;
-    const images = [image, productPhoto(category, index, 1), productPhoto(category, index, 2)];
+    const images = [image, pick(category.images, index + 1), pick(category.images, index + 2)];
     const description = `${category.name}: ${subCategory.toLowerCase()} для дома в Астане. Реальная фотография, актуальные размеры и характеристики в карточке товара.`;
 
     productRows.push([
@@ -205,8 +172,8 @@ for (const category of categories) {
       image,
       images,
       description,
-      Number((4.5 + (index % 5) * 0.1).toFixed(1)),
-      12 + index * 7,
+      0,
+      0,
       8 + (index * 3) % 50,
       badge,
       Math.floor(price / 12),
@@ -217,11 +184,11 @@ for (const category of categories) {
 
 const statements = [
   'delete from public.orders;',
+  'delete from public.product_reviews;',
   'delete from public.products;',
   'delete from public.profiles;',
   'delete from public.categories;',
-  `insert into public.categories (id, name, slug, image, "subCategories") values\n${categories.map(category => `(${sql(category.id)}, ${sql(category.name)}, ${sql(category.slug)}, ${sql(categoryPhoto(category))}, ${json(category.subCategories)})`).join(',\n')};`,
-  `insert into public.profiles (id, name, email, phone, "registeredAt", "cartItems", "totalOrders", "totalSpent") values\n${profiles.map(profile => `(${profile.map(sql).join(', ')})`).join(',\n')};`,
+  `insert into public.categories (id, name, slug, image, "subCategories") values\n${categories.map(category => `(${sql(category.id)}, ${sql(category.name)}, ${sql(category.slug)}, ${sql(category.image)}, ${json(category.subCategories)})`).join(',\n')};`,
   `insert into public.products (id, title, category, "subCategory", price, "oldPrice", image, images, description, rating, reviews, stock, badge, installment, attributes) values\n${productRows.map(row => `(${[
     sql(row[0]),
     sql(row[1]),
@@ -239,10 +206,6 @@ const statements = [
     sql(row[13]),
     json(row[14]),
   ].join(', ')})`).join(',\n')};`,
-  `insert into public.orders (id, "userId", "userName", items, total, status, date, address) values
-('ORD-1001', 'u1', 'Аружан Садыкова', ${json([{ title: productRows[0][1], qty: 1, price: productRows[0][4] }])}, ${sql(productRows[0][4])}, 'delivered', '2026-05-08', 'Астана, район Есиль'),
-('ORD-1002', 'u2', 'Данияр Ахметов', ${json([{ title: productRows[25][1], qty: 2, price: productRows[25][4] }])}, ${sql(productRows[25][4] * 2)}, 'shipping', '2026-05-09', 'Астана, пр. Кабанбай Батыра'),
-('ORD-1003', 'u3', 'Мадина Касым', ${json([{ title: productRows[105][1], qty: 3, price: productRows[105][4] }])}, ${sql(productRows[105][4] * 3)}, 'pending', '2026-05-10', 'Астана, ул. Сыганак');`,
 ];
 
 const target = process.argv[2] || '.goodhome-seed.sql';
