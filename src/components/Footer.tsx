@@ -1,4 +1,4 @@
-import { Instagram, Phone, Mail, MapPin, Youtube, MessageCircle, Music2, MapPinned, Link as LinkIcon } from 'lucide-react';
+import { Mail, MapPin, Phone } from 'lucide-react';
 import { useShopData } from '../data/shopDataStore';
 
 const CATALOG_LINKS = [
@@ -10,20 +10,20 @@ const CATALOG_LINKS = [
   { title: 'Полотенца', href: '/catalog/towels' },
 ];
 
+const SOCIAL_ICONS: Record<string, string> = {
+  instagram: 'https://cdn-icons-png.flaticon.com/512/2111/2111463.png',
+  youtube: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png',
+  tiktok: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png',
+  whatsapp: 'https://cdn-icons-png.flaticon.com/512/733/733585.png',
+  '2gis': 'https://cdn-icons-png.flaticon.com/512/535/535239.png',
+  other: 'https://cdn-icons-png.flaticon.com/512/545/545682.png',
+};
+
 export default function Footer() {
   const { settings } = useShopData();
-  const socialIcon = (type: string) => {
-    if (type === 'instagram') return <Instagram size={18}/>;
-    if (type === 'youtube') return <Youtube size={18}/>;
-    if (type === 'tiktok') return <Music2 size={18}/>;
-    if (type === 'whatsapp') return <MessageCircle size={18}/>;
-    if (type === '2gis') return <MapPinned size={18}/>;
-    return <LinkIcon size={18}/>;
-  };
 
   return (
     <footer style={{ background: '#1a1a2e', color: '#fff', marginTop: 60 }}>
-      {/* Main footer */}
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '50px 20px 30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 40 }}>
         <div>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: 8 }}>
@@ -32,12 +32,14 @@ export default function Footer() {
           <p style={{ color: '#888', fontSize: '0.85rem', lineHeight: 1.6, marginBottom: 16 }}>
             Магазин качественного домашнего текстиля. Постельное белье, полотенца, подушки и одеяла из Турции.
           </p>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {settings.socialLinks.map((s, i) => (
-              <a key={`${s.type}-${i}`} href={s.href || '#'} target={s.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" title={s.label} style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', textDecoration: 'none', transition: 'background 0.2s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#e53935')}
+              <a key={`${s.type}-${i}`} href={s.href || '#'} target={s.href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" title={s.label} style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'background 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.18)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-              >{socialIcon(s.type)}</a>
+              >
+                <img src={SOCIAL_ICONS[s.type] || SOCIAL_ICONS.other} alt={s.label} style={{ width: 18, height: 18, objectFit: 'contain', display: 'block' }} />
+              </a>
             ))}
           </div>
         </div>
@@ -72,7 +74,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Bottom bar */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', maxWidth: 1280, margin: '0 auto', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '0.8rem', color: '#555' }}>
         <span>© 2026 GOOD HOME. Все права защищены.</span>
         <span>Принимаем: Visa, Mastercard, Kaspi</span>

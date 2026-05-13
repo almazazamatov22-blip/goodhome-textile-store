@@ -158,7 +158,7 @@ for (const category of categories) {
     const oldPrice = index % 6 === 0 ? price + 4500 : null;
     const badge = index % 7 === 0 ? 'hit' : index % 5 === 0 ? 'sale' : index % 4 === 0 ? 'new' : null;
     const subCategory = pick(category.subCategories, index);
-    const title = `${pick(category.titles, index)} ${subCategory} GH-${index + 1}`;
+    const title = `${pick(category.titles, index)} ${subCategory}`;
     const images = [image, pick(category.images, index + 1), pick(category.images, index + 2)];
     const description = `${category.name}: ${subCategory.toLowerCase()} для дома в Астане. Реальная фотография, актуальные размеры и характеристики в карточке товара.`;
 

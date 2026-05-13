@@ -1,10 +1,10 @@
 import { supabaseRest } from '../lib/supabase';
-import { DEFAULT_SITE_SETTINGS, type Category, type Order, type Product, type Review, type SiteSettings, type User } from './products';
+import { cleanProductTitle, DEFAULT_SITE_SETTINGS, type Category, type Order, type Product, type Review, type SiteSettings, type User } from './products';
 
 export function fetchSupabaseProducts() {
   return supabaseRest<Product[]>('products', {
     query: 'select=*&order=id.asc',
-  });
+  }).then(products => products.map(product => ({ ...product, title: cleanProductTitle(product.title) })));
 }
 
 export function fetchSupabaseCategories() {

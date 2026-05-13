@@ -81,6 +81,10 @@ export interface SiteSettings {
   socialLinks: SocialLink[];
 }
 
+export function cleanProductTitle(title: string) {
+  return title.replace(/\s+GH-\d+\s*$/i, '').trim();
+}
+
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   phone: '+7 702 379 72 33',
   whatsapp: 'https://wa.me/77023797233',

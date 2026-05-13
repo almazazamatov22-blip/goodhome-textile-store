@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { DEFAULT_SITE_SETTINGS, type Product, type Category, type Order, type Review, type SiteSettings } from '../data/products';
+﻿import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { cleanProductTitle, DEFAULT_SITE_SETTINGS, type Product, type Category, type Order, type Review, type SiteSettings } from '../data/products';
 import { CATEGORY_FILTERS } from '../data/filters';
 import { BarChart2, ShoppingBag, Tag, LogOut, Users, ShoppingCart, Package, Plus, Pencil, Trash2, X, Save, TrendingUp, Clock, CheckCircle, Truck, XCircle, Settings, MessageSquare, Star } from 'lucide-react';
 
@@ -32,6 +32,13 @@ const NAV = [
   { id: 'categories', label: 'Категории', icon: <Tag size={18}/> },
   { id: 'reviews', label: 'Отзывы', icon: <MessageSquare size={18}/> },
   { id: 'settings', label: 'Настройки', icon: <Settings size={18}/> },
+];
+
+const ADMIN_ROLES = [
+  { id: 'manager', label: 'Менеджер', pages: ['dashboard', 'orders', 'products', 'categories', 'reviews'] },
+  { id: 'courier', label: 'Курьер', pages: ['orders'] },
+  { id: 'director', label: 'Директор', pages: ['dashboard', 'orders', 'users', 'products', 'categories', 'reviews', 'settings'] },
+  { id: 'admin', label: 'Админ', pages: ['dashboard', 'orders', 'users', 'products', 'categories', 'reviews', 'settings'] },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: ReactNode }> = {
@@ -326,6 +333,7 @@ function SettingsEditor({ settings, saving, onSave }: { settings: SiteSettings; 
 export default function Admin() {
   const [page, setPage] = useState('dashboard');
   const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('goodhome_admin_key') || '');
+  const [adminRole, setAdminRole] = useState(() => sessionStorage.getItem('goodhome_admin_role') || 'admin');
   const [data, setData] = useState<AdminData>({ products: [], categories: [], orders: [], users: [], reviews: [], settings: DEFAULT_SITE_SETTINGS });
   const [editProduct, setEditProduct] = useState<Partial<Product>|null|undefined>(undefined);
   const [editCategory, setEditCategory] = useState<Partial<Category>|null|undefined>(undefined);
@@ -344,6 +352,7 @@ export default function Admin() {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         'x-admin-key': adminKey,
+        'x-admin-role': adminRole,
         ...(options.headers || {}),
       },
     });
@@ -354,7 +363,7 @@ export default function Admin() {
     }
 
     return response.json() as Promise<T>;
-  }, [adminKey]);
+  }, [adminKey, adminRole]);
 
   const loadAdminData = useCallback(async () => {
     if (!adminKey.trim()) return;
@@ -362,14 +371,20 @@ export default function Admin() {
     setError(null);
     try {
       sessionStorage.setItem('goodhome_admin_key', adminKey);
+      sessionStorage.setItem('goodhome_admin_role', adminRole);
       const nextData = await adminRequest<AdminData>('all');
-      setData({ ...nextData, settings: nextData.settings || DEFAULT_SITE_SETTINGS, reviews: nextData.reviews || [] });
+      setData({
+        ...nextData,
+        products: nextData.products.map(product => ({ ...product, title: cleanProductTitle(product.title) })),
+        settings: nextData.settings || DEFAULT_SITE_SETTINGS,
+        reviews: nextData.reviews || [],
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить админ-данные');
     } finally {
       setLoading(false);
     }
-  }, [adminKey, adminRequest]);
+  }, [adminKey, adminRole, adminRequest]);
 
   const uploadImage = useCallback(async (file: File, folder: string) => {
     const base64 = await fileToBase64(file);
@@ -474,22 +489,29 @@ export default function Admin() {
   const pending = orders.filter(o => o.status==='pending').length;
 
   const filteredOrders = orderFilter==='all' ? orders : orders.filter(o => o.status===orderFilter);
+  const currentRole = ADMIN_ROLES.find(role => role.id === adminRole) || ADMIN_ROLES[3];
+  const visibleNav = NAV.filter(item => currentRole.pages.includes(item.id));
+  const activePage = currentRole.pages.includes(page) ? page : currentRole.pages[0];
 
   const sideStyle = (id: string) => ({
-    width:'100%', background: page===id ? 'rgba(229,57,53,0.12)' : 'none', border:'none',
-    borderLeft: page===id ? '3px solid #e53935' : '3px solid transparent',
-    color: page===id ? '#e53935' : '#aaa', padding:'11px 20px',
+    width:'100%', background: activePage===id ? 'rgba(229,57,53,0.12)' : 'none', border:'none',
+    borderLeft: activePage===id ? '3px solid #e53935' : '3px solid transparent',
+    color: activePage===id ? '#e53935' : '#aaa', padding:'11px 20px',
     display:'flex', gap:12, alignItems:'center', fontSize:'0.88rem',
-    fontWeight: page===id ? 700 : 400, cursor:'pointer', textAlign:'left' as const, transition:'all 0.2s'
+    fontWeight: activePage===id ? 700 : 400, cursor:'pointer', textAlign:'left' as const, transition:'all 0.2s'
   });
 
   if (!adminKey || (error === 'Invalid admin key' && !products.length)) {
     return (
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f4f6fb', fontFamily:'Roboto,sans-serif', padding:20 }}>
         <div style={{ width:380, background:'#fff', borderRadius:14, padding:28, boxShadow:'0 10px 35px rgba(0,0,0,0.1)' }}>
-          <h1 style={{ fontSize:'1.25rem', fontWeight:800, color:'#1a1a2e', marginBottom:10 }}>Админ-панель GOOD HOME</h1>
-          <p style={{ color:'#777', fontSize:'0.88rem', lineHeight:1.5, marginBottom:18 }}>Введите ключ администратора. Все действия будут выполнены через Supabase на сервере.</p>
-          <input type="password" value={adminKey} onChange={e => setAdminKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && void loadAdminData()} placeholder="ADMIN_API_KEY"
+          <h1 style={{ fontSize:'1.25rem', fontWeight:800, color:'#1a1a2e', marginBottom:10 }}>Админская Панель</h1>
+          <p style={{ color:'#777', fontSize:'0.88rem', lineHeight:1.5, marginBottom:18 }}>Выберите роль и введите пароль администратора.</p>
+          <select value={adminRole} onChange={e => setAdminRole(e.target.value)}
+            style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'11px 12px', fontSize:'0.95rem', outline:'none', boxSizing:'border-box', marginBottom:12 }}>
+            {ADMIN_ROLES.map(role => <option key={role.id} value={role.id}>{role.label}</option>)}
+          </select>
+          <input type="password" value={adminKey} onChange={e => setAdminKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && void loadAdminData()} placeholder="Пароль"
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'11px 12px', fontSize:'0.95rem', outline:'none', boxSizing:'border-box', marginBottom:12 }} />
           {error && <div style={{ color:'#c62828', fontSize:'0.82rem', marginBottom:12 }}>{error}</div>}
           <button onClick={() => void loadAdminData()} disabled={loading || !adminKey.trim()}
@@ -514,10 +536,10 @@ export default function Admin() {
       <aside style={{ width:230, background:'#1a1a2e', color:'#fff', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ padding:'22px 18px 18px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize:'1.3rem', fontWeight:900 }}>GOOD<span style={{ color:'#e53935' }}> HOME</span></div>
-          <div style={{ fontSize:'0.68rem', color:'#555', marginTop:2 }}>Панель управления</div>
+          <div style={{ fontSize:'0.68rem', color:'#888', marginTop:2 }}>Админская Панель · {currentRole.label}</div>
         </div>
         <nav style={{ flex:1, padding:'12px 0' }}>
-          {NAV.map(n => (
+          {visibleNav.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)} style={sideStyle(n.id)}>
               {n.icon}{n.label}
             </button>
@@ -538,7 +560,7 @@ export default function Admin() {
         )}
 
         {/* DASHBOARD */}
-        {page==='dashboard' && (
+        {activePage==='dashboard' && (
           <div>
             <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Дашборд</h1>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:28 }}>
@@ -591,7 +613,7 @@ export default function Admin() {
         )}
 
         {/* ORDERS */}
-        {page==='orders' && (
+        {activePage==='orders' && (
           <div>
             <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Заказы ({orders.length})</h1>
             <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap' }}>
@@ -656,7 +678,7 @@ export default function Admin() {
         )}
 
         {/* USERS */}
-        {page==='users' && (
+        {activePage==='users' && (
           <div>
             <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Пользователи ({users.length})</h1>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
@@ -692,7 +714,7 @@ export default function Admin() {
         )}
 
         {/* PRODUCTS */}
-        {page==='products' && (
+        {activePage==='products' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
               <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e' }}>Товары ({products.length})</h1>
@@ -738,7 +760,7 @@ export default function Admin() {
         )}
 
         {/* CATEGORIES */}
-        {page==='categories' && (
+        {activePage==='categories' && (
           <div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:22 }}>
               <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e' }}>Категории</h1>
@@ -773,7 +795,7 @@ export default function Admin() {
         )}
 
         {/* REVIEWS */}
-        {page==='reviews' && (
+        {activePage==='reviews' && (
           <div>
             <h1 style={{ fontWeight:800, fontSize:'1.5rem', color:'#1a1a2e', marginBottom:22 }}>Отзывы ({reviews.length})</h1>
             <div style={{ background:'#fff', borderRadius:12, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -817,7 +839,7 @@ export default function Admin() {
         )}
 
         {/* SETTINGS */}
-        {page==='settings' && (
+        {activePage==='settings' && (
           <SettingsEditor settings={settings} saving={saving} onSave={handleSaveSettings} />
         )}
 
@@ -825,3 +847,4 @@ export default function Admin() {
     </div>
   );
 }
+

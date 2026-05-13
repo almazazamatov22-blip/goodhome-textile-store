@@ -193,6 +193,17 @@ create policy "Users can read their profile"
 on public.profiles for select
 using (auth.uid()::text = id);
 
+drop policy if exists "Users can create their profile" on public.profiles;
+create policy "Users can create their profile"
+on public.profiles for insert
+with check (auth.uid()::text = id);
+
+drop policy if exists "Users can update their profile" on public.profiles;
+create policy "Users can update their profile"
+on public.profiles for update
+using (auth.uid()::text = id)
+with check (auth.uid()::text = id);
+
 drop policy if exists "Users can read their orders" on public.orders;
 create policy "Users can read their orders"
 on public.orders for select
@@ -221,3 +232,7 @@ values ('main', '{
   ]
 }'::jsonb)
 on conflict (key) do nothing;
+
+update public.products
+set title = regexp_replace(title, '\s+GH-[0-9]+$', '', 'i')
+where title ~* '\s+GH-[0-9]+$';
