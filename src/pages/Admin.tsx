@@ -332,7 +332,7 @@ function SettingsEditor({ settings, saving, onSave }: { settings: SiteSettings; 
 
 export default function Admin() {
   const [page, setPage] = useState('dashboard');
-  const [adminKey, setAdminKey] = useState(() => sessionStorage.getItem('goodhome_admin_key') || '');
+  const [adminKey, setAdminKey] = useState('');
   const [adminRole, setAdminRole] = useState(() => sessionStorage.getItem('goodhome_admin_role') || 'admin');
   const [data, setData] = useState<AdminData>({ products: [], categories: [], orders: [], users: [], reviews: [], settings: DEFAULT_SITE_SETTINGS });
   const [editProduct, setEditProduct] = useState<Partial<Product>|null|undefined>(undefined);
@@ -371,7 +371,6 @@ export default function Admin() {
     setLoading(true);
     setError(null);
     try {
-      sessionStorage.setItem('goodhome_admin_key', adminKey);
       sessionStorage.setItem('goodhome_admin_role', adminRole);
       const nextData = await adminRequest<AdminData>('all');
       setData({
