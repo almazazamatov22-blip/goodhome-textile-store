@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState, type ReactNode } from 'react';
+﻿import { useCallback, useState, type ReactNode } from 'react';
 import { cleanProductTitle, DEFAULT_SITE_SETTINGS, type Product, type Category, type Order, type Review, type SiteSettings } from '../data/products';
 import { CATEGORY_FILTERS } from '../data/filters';
 import { BarChart2, ShoppingBag, Tag, LogOut, Users, ShoppingCart, Package, Plus, Pencil, Trash2, X, Save, TrendingUp, Clock, CheckCircle, Truck, XCircle, Settings, MessageSquare, Star } from 'lucide-react';
@@ -340,6 +340,7 @@ export default function Admin() {
   const [orderFilter, setOrderFilter] = useState('all');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { products, categories, orders, users, reviews, settings } = data;
@@ -379,8 +380,14 @@ export default function Admin() {
         settings: nextData.settings || DEFAULT_SITE_SETTINGS,
         reviews: nextData.reviews || [],
       });
+      setAuthenticated(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось загрузить админ-данные');
+      const message = err instanceof Error ? err.message : 'Не удалось загрузить админ-данные';
+      if (message === 'Invalid admin key') {
+        setAuthenticated(false);
+        sessionStorage.removeItem('goodhome_admin_key');
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -399,14 +406,6 @@ export default function Admin() {
     });
     return result.url;
   }, [adminRequest]);
-
-  useEffect(() => {
-    if (!adminKey) return;
-    const timer = window.setTimeout(() => {
-      void loadAdminData();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [adminKey, loadAdminData]);
 
   const handleSaveProduct = async (product: Product) => {
     setSaving(true);
@@ -501,17 +500,17 @@ export default function Admin() {
     fontWeight: activePage===id ? 700 : 400, cursor:'pointer', textAlign:'left' as const, transition:'all 0.2s'
   });
 
-  if (!adminKey || (error === 'Invalid admin key' && !products.length)) {
+  if (!authenticated) {
     return (
       <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f4f6fb', fontFamily:'Roboto,sans-serif', padding:20 }}>
         <div style={{ width:380, background:'#fff', borderRadius:14, padding:28, boxShadow:'0 10px 35px rgba(0,0,0,0.1)' }}>
           <h1 style={{ fontSize:'1.25rem', fontWeight:800, color:'#1a1a2e', marginBottom:10 }}>Админская Панель</h1>
           <p style={{ color:'#777', fontSize:'0.88rem', lineHeight:1.5, marginBottom:18 }}>Выберите роль и введите пароль администратора.</p>
-          <select value={adminRole} onChange={e => setAdminRole(e.target.value)}
+          <select value={adminRole} onChange={e => { setAdminRole(e.target.value); setError(null); }}
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'11px 12px', fontSize:'0.95rem', outline:'none', boxSizing:'border-box', marginBottom:12 }}>
             {ADMIN_ROLES.map(role => <option key={role.id} value={role.id}>{role.label}</option>)}
           </select>
-          <input type="password" value={adminKey} onChange={e => setAdminKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && void loadAdminData()} placeholder="Пароль"
+          <input type="password" value={adminKey} onChange={e => { setAdminKey(e.target.value); setError(null); }} onKeyDown={e => e.key === 'Enter' && void loadAdminData()} placeholder="Пароль"
             style={{ width:'100%', border:'1px solid #ddd', borderRadius:8, padding:'11px 12px', fontSize:'0.95rem', outline:'none', boxSizing:'border-box', marginBottom:12 }} />
           {error && <div style={{ color:'#c62828', fontSize:'0.82rem', marginBottom:12 }}>{error}</div>}
           <button onClick={() => void loadAdminData()} disabled={loading || !adminKey.trim()}
